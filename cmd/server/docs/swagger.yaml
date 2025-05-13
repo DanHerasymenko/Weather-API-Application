@@ -1,0 +1,8 @@
+info:
+  contact: {}
+  description: Weather API application that allows users to subscribe to weather updates
+    for their city.
+  title: Weather Forecast API
+  version: "1.0"
+paths: {}
+swagger: "2.0"
