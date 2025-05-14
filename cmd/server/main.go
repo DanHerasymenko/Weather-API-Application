@@ -5,10 +5,13 @@
 package main
 
 import (
+	_ "Weather-API-Application/cmd/server/docs"
 	"Weather-API-Application/internal/clients"
 	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/logger"
 	"Weather-API-Application/internal/server"
+	"Weather-API-Application/internal/server/handlers"
+	"Weather-API-Application/internal/server/middleware"
 	"Weather-API-Application/internal/services"
 	"context"
 	"fmt"
@@ -38,4 +41,13 @@ func main() {
 
 	// Register middlewares
 	mdlwrs := middleware.NewMiddlewares(cfg, clnts)
+
+	// Create handlers
+	hdlrs := handlers.NewHandlers(cfg, srvc, mdlwrs)
+	hdlrs.RegisterRoutes(srvr.Router)
+
+	logger.Info(ctx, cfg.AppPort)
+
+	// Run server
+	srvr.Run(ctx)
 }

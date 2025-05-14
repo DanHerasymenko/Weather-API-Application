@@ -8,6 +8,8 @@ require (
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/oklog/ulid/v2 v2.1.0
 	github.com/pressly/goose/v3 v3.24.3
+	github.com/swaggo/files v1.0.1
+	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.16.4
 )
 
