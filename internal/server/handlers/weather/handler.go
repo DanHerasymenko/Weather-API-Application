@@ -19,12 +19,6 @@ func NewHandler(cfg *config.Config, services *services.Services) *Handler {
 	}
 }
 
-type Weather struct {
-	Temperature int    `json:"temperature" example:"25"`    // Current temperature
-	Humidity    int    `json:"humidity" example:"60"`       // Current humidity percentage
-	Description string `json:"description" example:"Sunny"` // Weather description
-}
-
 // GetWeather godoc
 // @Summary      Get current weather for a city
 // @Description  Returns the current weather forecast for the specified city using WeatherAPI.com.

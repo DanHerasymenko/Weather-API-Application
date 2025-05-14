@@ -1,7 +1,6 @@
 package weather
 
 import (
-	"Weather-API-Application/internal/clients"
 	"Weather-API-Application/internal/config"
 	"encoding/json"
 	"fmt"
@@ -9,14 +8,12 @@ import (
 )
 
 type Service struct {
-	cfg   *config.Config
-	clnts *clients.Clients
+	cfg *config.Config
 }
 
-func NewService(cfg *config.Config, clnts *clients.Clients) *Service {
+func NewService(cfg *config.Config) *Service {
 	return &Service{
-		cfg:   cfg,
-		clnts: clnts,
+		cfg: cfg,
 	}
 }
 
