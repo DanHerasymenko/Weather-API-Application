@@ -14,7 +14,74 @@ const docTemplate = `{
     },
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
-    "paths": {}
+    "paths": {
+        "/api/weather": {
+            "get": {
+                "description": "Returns the current weather forecast for the specified city using WeatherAPI.com.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "weather"
+                ],
+                "summary": "Get current weather for a city",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "City name for weather forecast",
+                        "name": "city",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation - current weather forecast returned",
+                        "schema": {
+                            "$ref": "#/definitions/weather.Weather"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "City not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "weather.Weather": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "description": "Weather description",
+                    "type": "string",
+                    "example": "Sunny"
+                },
+                "humidity": {
+                    "description": "Current humidity percentage",
+                    "type": "integer",
+                    "example": 60
+                },
+                "temperature": {
+                    "description": "Current temperature",
+                    "type": "integer",
+                    "example": 25
+                }
+            }
+        }
+    }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it

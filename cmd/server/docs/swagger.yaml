@@ -1,8 +1,54 @@
+definitions:
+  weather.Weather:
+    properties:
+      description:
+        description: Weather description
+        example: Sunny
+        type: string
+      humidity:
+        description: Current humidity percentage
+        example: 60
+        type: integer
+      temperature:
+        description: Current temperature
+        example: 25
+        type: integer
+    type: object
 info:
   contact: {}
   description: Weather API application that allows users to subscribe to weather updates
     for their city.
   title: Weather Forecast API
   version: "1.0"
-paths: {}
+paths:
+  /api/weather:
+    get:
+      consumes:
+      - application/json
+      description: Returns the current weather forecast for the specified city using
+        WeatherAPI.com.
+      parameters:
+      - description: City name for weather forecast
+        in: query
+        name: city
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful operation - current weather forecast returned
+          schema:
+            $ref: '#/definitions/weather.Weather'
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "404":
+          description: City not found
+          schema:
+            type: string
+      summary: Get current weather for a city
+      tags:
+      - weather
 swagger: "2.0"

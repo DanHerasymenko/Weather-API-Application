@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"Weather-API-Application/internal/config"
+	wh "Weather-API-Application/internal/server/handlers/weather"
 	"Weather-API-Application/internal/server/middleware"
 	"Weather-API-Application/internal/services"
 	"github.com/gin-gonic/gin"
@@ -10,11 +11,15 @@ import (
 )
 
 type Handlers struct {
+	Weather *wh.Handler
+
 	mdlwrs *middleware.Middlewares
 }
 
 func NewHandlers(cfg *config.Config, srvc *services.Services, mdlwrs *middleware.Middlewares) *Handlers {
 	return &Handlers{
+		Weather: wh.NewHandler(cfg, srvc),
+
 		mdlwrs: mdlwrs,
 	}
 }
@@ -27,4 +32,10 @@ func (h *Handlers) RegisterRoutes(router *gin.Engine) {
 	// API group with global log middleware
 	api := router.Group("/api")
 	api.Use(h.mdlwrs.Log.Handle)
+
+	weather := api.Group("/weather")
+	weather.GET("/", h.Weather.GetWeather)
+
+	//subscription := api.Group("/subscription")
+
 }
