@@ -41,7 +41,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successful operation - current weather forecast returned",
                         "schema": {
-                            "$ref": "#/definitions/weather.Weather"
+                            "$ref": "#/definitions/internal_server_handlers_weather.Weather"
                         }
                     },
                     "400": {
@@ -61,7 +61,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "weather.Weather": {
+        "internal_server_handlers_weather.Weather": {
             "type": "object",
             "properties": {
                 "description": {

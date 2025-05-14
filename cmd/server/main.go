@@ -27,7 +27,7 @@ func main() {
 	}
 	logger.Info(ctx, "Config loaded")
 
-	// Create clients (Postgres client)
+	// Create clients
 	clnts, err := clients.NewClients(ctx, cfg)
 	if err != nil {
 		logger.Fatal(ctx, fmt.Errorf("failed to create clients: %w", err))

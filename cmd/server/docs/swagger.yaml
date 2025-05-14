@@ -1,5 +1,5 @@
 definitions:
-  weather.Weather:
+  internal_server_handlers_weather.Weather:
     properties:
       description:
         description: Weather description
@@ -39,7 +39,7 @@ paths:
         "200":
           description: Successful operation - current weather forecast returned
           schema:
-            $ref: '#/definitions/weather.Weather'
+            $ref: '#/definitions/internal_server_handlers_weather.Weather'
         "400":
           description: Invalid request
           schema:

@@ -3,9 +3,8 @@ package weather
 import (
 	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/services"
-	"fmt"
+	"Weather-API-Application/internal/utils"
 	"github.com/gin-gonic/gin"
-	"net/http"
 )
 
 type Handler struct {
@@ -38,16 +37,14 @@ type Weather struct {
 // @Failure 404 {string} string "City not found"
 // @Router       /api/weather [get]
 func (h *Handler) GetWeather(ctx *gin.Context) {
+
 	city := ctx.Query("city")
 
-	//
+	fetchedWeather, err, code := h.services.Weather.FetchWeatherForCity(city)
+	if err != nil {
+		utils.AbortWithError(ctx, code, err)
+		return
+	}
 
-	ctx.String(http.StatusBadRequest, "Invalid request")
-
-	fmt.Println("City:", city)
-	ctx.JSON(200, Weather{
-		Temperature: 25,
-		Humidity:    60,
-		Description: "Sunny",
-	})
+	ctx.JSON(200, fetchedWeather)
 }
