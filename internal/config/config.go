@@ -15,6 +15,8 @@ type Config struct {
 	PostgresPassword      string `env:"POSTGRES_PASSWORD"`
 	PostgresDB            string `env:"POSTGRES_DB"`
 	RunMigrations         bool   `env:"RUN_MIGRATIONS" envDefault:"false"`
+
+	WeatherApiKey string `env:"WEATHER_API_KEY"`
 }
 
 func NewConfigFromEnv() (*Config, error) {
