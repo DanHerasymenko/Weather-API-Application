@@ -6,6 +6,7 @@ require (
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/gin-gonic/gin v1.10.0
 	github.com/jackc/pgx/v5 v5.7.4
+	github.com/oklog/ulid/v2 v2.1.0
 	github.com/pressly/goose/v3 v3.24.3
 	github.com/swaggo/swag v1.16.4
 )

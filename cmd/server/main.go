@@ -35,4 +35,7 @@ func main() {
 
 	// Create server
 	srvr := server.NewServer(cfg)
+
+	// Register middlewares
+	mdlwrs := middleware.NewMiddlewares(cfg, clnts)
 }
