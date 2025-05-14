@@ -8,6 +8,8 @@ import (
 	"Weather-API-Application/internal/clients"
 	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/logger"
+	"Weather-API-Application/internal/server"
+	"Weather-API-Application/internal/services"
 	"context"
 	"fmt"
 )
@@ -27,4 +29,10 @@ func main() {
 	if err != nil {
 		logger.Fatal(ctx, fmt.Errorf("failed to create clients: %w", err))
 	}
+
+	// Create services
+	srvc := services.NewServices(cfg, clnts)
+
+	// Create server
+	srvr := server.NewServer(cfg)
 }
