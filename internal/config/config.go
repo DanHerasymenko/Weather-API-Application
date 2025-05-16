@@ -8,6 +8,7 @@ import (
 type Config struct {
 	Env     string `env:"APP_ENV"   envDefault:"local"`
 	AppPort string `env:"APP_PORT" envDefault:":8080"`
+	BaseURL string `env:"BASE_URL"`
 
 	PostgresContainerHost string `env:"POSTGRES_CONTAINER_HOST"`
 	PostgresContainerPort int    `env:"POSTGRES_CONTAINER_PORT"`
@@ -17,6 +18,11 @@ type Config struct {
 	RunMigrations         bool   `env:"RUN_MIGRATIONS" envDefault:"false"`
 
 	WeatherApiKey string `env:"WEATHER_API_KEY"`
+
+	From     string `env:"SMTP_FROM"`
+	Password string `env:"SMTP_PASSWORD"`
+	Host     string `env:"SMTP_HOST"`
+	Port     string `env:"SMTP_PORT"`
 }
 
 func NewConfigFromEnv() (*Config, error) {

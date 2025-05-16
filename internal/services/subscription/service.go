@@ -65,6 +65,18 @@ func (s *Service) Unsubscribe(ctx context.Context, token string) (int, error) {
 	return http.StatusOK, nil
 }
 
+// Subscribe attempts to create or update a weather subscription for a given email and city.
+//
+// The logic flow is as follows:
+//  1. Checks if a subscription for the email + city pair already exists.
+//  2. If found and confirmed = true → returns 409 Conflict.
+//  3. If found and confirmed = false → generates a new token, updates the record, and sends a new confirmation email.
+//  4. If not found → creates a new record with a generated token and sends confirmation email.
+//
+// Returns:
+//   - 200 OK on successful creation or update.
+//   - 409 Conflict if subscription is already active.
+//   - 500 Internal Server Error on DB or email errors.
 func (s *Service) Subscribe(ctx context.Context, email, city string) (int, error) {
 
 	row := s.clnts.PostgresClnt.Postgres.QueryRow(ctx, "SELECT confirmed FROM weather_subscriptions WHERE email = $1 AND city = $2", email, city)
@@ -80,33 +92,47 @@ func (s *Service) Subscribe(ctx context.Context, email, city string) (int, error
 
 	//found and confirmed - false
 	if err == nil && !confirmed {
-		err := s.updateToken(ctx, email, city)
+
+		// update token
+		newToken := createNewToken()
+		err := s.updateToken(ctx, newToken, email, city)
 		if err != nil {
 			return http.StatusInternalServerError, fmt.Errorf("failed to update subscription: %w", err)
 		}
-		// send email
+
+		// send confirmation email
+		if err := s.clnts.EmailClnt.SendEmail(email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, newToken)); err != nil {
+			return http.StatusInternalServerError, fmt.Errorf("failed to send confirmation email: %w", err)
+		}
+		return http.StatusOK, nil
 	}
 
 	//not found - create new sub
 	if errors.Is(err, pgx.ErrNoRows) {
-		err := s.createNewSubscription(ctx, email, city)
+
+		// create new token
+		newToken := createNewToken()
+		err := s.createNewSubscription(ctx, newToken, email, city)
 		if err != nil {
 			return http.StatusInternalServerError, fmt.Errorf("failed to create subscription: %w", err)
 		}
-		// send email
-	}
 
-	return 200, nil
+		// send confirmation email
+		if err := s.clnts.EmailClnt.SendEmail(email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, newToken)); err != nil {
+			return http.StatusInternalServerError, fmt.Errorf("failed to send confirmation email: %w", err)
+		}
+		return http.StatusOK, nil
+	}
+	return http.StatusOK, nil
 }
 
 func createNewToken() string {
 	return uuid.New().String()
 }
 
-func (s *Service) updateToken(ctx context.Context, email, city string) error {
+func (s *Service) updateToken(ctx context.Context, token, email, city string) error {
 
-	_, err := s.clnts.PostgresClnt.Postgres.Exec(ctx, "UPDATE weather_subscriptions SET token = $1 WHERE email = $1 AND city = $3", createNewToken(), email, city)
-	// TODO: HOW TO UPDATE CREATED AT
+	_, err := s.clnts.PostgresClnt.Postgres.Exec(ctx, "UPDATE weather_subscriptions SET token = $1, created_at = now() WHERE email = $2 AND city = $3", token, email, city)
 	if err != nil {
 		return fmt.Errorf("failed to update subscription: %w", err)
 	}
@@ -114,19 +140,12 @@ func (s *Service) updateToken(ctx context.Context, email, city string) error {
 	return nil
 }
 
-func (s *Service) createNewSubscription(ctx context.Context, email, city string) error {
-	_, err := s.clnts.PostgresClnt.Postgres.Exec(ctx, "INSERT INTO weather_subscriptions (email, city, token) VALUES ($1, $2, $3)", email, city, createNewToken())
-	// TODO: HOW TO UPDATE CREATED AT
+func (s *Service) createNewSubscription(ctx context.Context, newToken, email, city string) error {
+
+	_, err := s.clnts.PostgresClnt.Postgres.Exec(ctx, `INSERT INTO weather_subscriptions (email, city, token, created_at) VALUES ($1, $2, $3, now())`, email, city, newToken)
 	if err != nil {
 		return fmt.Errorf("failed to create subscription: %w", err)
 	}
 
 	return nil
-}
-
-func sendEmail() {
-	// send email
-	// use smtp client
-	// use html template
-	// use email service
 }

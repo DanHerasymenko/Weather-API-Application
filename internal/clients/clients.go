@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"Weather-API-Application/internal/clients/email"
 	"Weather-API-Application/internal/clients/postgres"
 	"Weather-API-Application/internal/config"
 	"context"
@@ -8,6 +9,7 @@ import (
 
 type Clients struct {
 	PostgresClnt *postgres.Client
+	EmailClnt    email.Client
 }
 
 func NewClients(ctx context.Context, cfg *config.Config) (*Clients, error) {
@@ -17,8 +19,16 @@ func NewClients(ctx context.Context, cfg *config.Config) (*Clients, error) {
 		return nil, err
 	}
 
+	emailClient := email.NewSMTPClient(
+		cfg.From,
+		cfg.Password,
+		cfg.Host,
+		cfg.Port,
+	)
+
 	clients := &Clients{
 		PostgresClnt: postgresClient,
+		EmailClnt:    emailClient,
 	}
 
 	return clients, nil

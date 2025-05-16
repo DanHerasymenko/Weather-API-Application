@@ -43,6 +43,34 @@ paths:
       summary: Confirm email subscription
       tags:
       - subscription
+  /api/subscription/unsubscribe/{token}:
+    get:
+      description: Unsubscribes an email from weather updates using the token sent
+        in emails.
+      parameters:
+      - description: Unsubscribe token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Unsubscribed successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid token
+          schema:
+            type: string
+        "404":
+          description: Token not found
+          schema:
+            type: string
+      summary: Unsubscribe from weather updates
+      tags:
+      - subscription
   /api/weather:
     get:
       consumes:

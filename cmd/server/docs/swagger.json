@@ -48,6 +48,47 @@
                 }
             }
         },
+        "/api/subscription/unsubscribe/{token}": {
+            "get": {
+                "description": "Unsubscribes an email from weather updates using the token sent in emails.",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "subscription"
+                ],
+                "summary": "Unsubscribe from weather updates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Unsubscribe token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Unsubscribed successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid token",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Token not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/weather": {
             "get": {
                 "description": "Returns the current weather forecast for the specified city using WeatherAPI.com.",

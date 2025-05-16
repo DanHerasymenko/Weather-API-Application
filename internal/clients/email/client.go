@@ -1,12 +1,25 @@
 package email
 
-import (
-	"Weather-API-Application/internal/config"
-	"github.com/jackc/pgx/v5/pgxpool"
-)
+import "net/smtp"
 
-type Client struct {
-	Postgres *pgxpool.Pool
+type SMTPClient struct {
+	From     string
+	Password string
+	Host     string
+	Port     string
 }
 
-func NewPostgresClient(ctx context.Context, cfg *config.Config) (*Client, error) {
+func NewSMTPClient(from, password, host, port string) *SMTPClient {
+	return &SMTPClient{From: from, Password: password, Host: host, Port: port}
+}
+
+func (c *SMTPClient) SendEmail(to, subject, body string) error {
+	msg := []byte("To: " + to + "\r\n" +
+		"Subject: " + subject + "\r\n" +
+		"MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n" +
+		"\r\n" + body)
+
+	auth := smtp.PlainAuth("", c.From, c.Password, c.Host)
+
+	return smtp.SendMail(c.Host+":"+c.Port, auth, c.From, []string{to}, msg)
+}
