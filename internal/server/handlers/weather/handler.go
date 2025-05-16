@@ -1,21 +1,18 @@
 package weather
 
 import (
-	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/services"
-	"Weather-API-Application/internal/utils"
+	"Weather-API-Application/internal/utils/response"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	cfg      *config.Config
-	services *services.Services
+	srvc *services.Services
 }
 
-func NewHandler(cfg *config.Config, services *services.Services) *Handler {
+func NewHandler(srvc *services.Services) *Handler {
 	return &Handler{
-		cfg:      cfg,
-		services: services,
+		srvc: srvc,
 	}
 }
 
@@ -34,9 +31,9 @@ func (h *Handler) GetWeather(ctx *gin.Context) {
 
 	city := ctx.Query("city")
 
-	fetchedWeather, err, code := h.services.Weather.FetchWeatherForCity(city)
+	fetchedWeather, err, code := h.srvc.Weather.FetchWeatherForCity(city)
 	if err != nil {
-		utils.AbortWithError(ctx, code, err)
+		response.AbortWithError(ctx, code, err)
 		return
 	}
 

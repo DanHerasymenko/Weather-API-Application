@@ -1,5 +1,6 @@
 -- +goose Up
 CREATE TABLE IF NOT EXISTS weather_subscriptions (
+
                                      id UUID PRIMARY KEY,
                                      email TEXT NOT NULL,
                                      city TEXT NOT NULL,
@@ -7,7 +8,7 @@ CREATE TABLE IF NOT EXISTS weather_subscriptions (
                                      token TEXT UNIQUE NOT NULL,
                                      confirmed BOOLEAN DEFAULT FALSE,
                                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                     last_sent_at TIMESTAMP
+                                     UNIQUE(email, city)
 );
 
 -- +goose Down

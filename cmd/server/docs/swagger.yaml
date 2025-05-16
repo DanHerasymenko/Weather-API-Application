@@ -1,18 +1,12 @@
 definitions:
-  internal_server_handlers_weather.Weather:
+  weather.Weather:
     properties:
       description:
-        description: Weather description
-        example: Sunny
         type: string
       humidity:
-        description: Current humidity percentage
-        example: 60
-        type: integer
+        type: number
       temperature:
-        description: Current temperature
-        example: 25
-        type: integer
+        type: number
     type: object
 info:
   contact: {}
@@ -21,6 +15,34 @@ info:
   title: Weather Forecast API
   version: "1.0"
 paths:
+  /api/subscription/confirm/{token}:
+    get:
+      description: Confirms a subscription using the token sent in the confirmation
+        email.
+      parameters:
+      - description: Confirmation token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Subscription confirmed successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid token
+          schema:
+            type: string
+        "404":
+          description: Token not found
+          schema:
+            type: string
+      summary: Confirm email subscription
+      tags:
+      - subscription
   /api/weather:
     get:
       consumes:
@@ -39,7 +61,7 @@ paths:
         "200":
           description: Successful operation - current weather forecast returned
           schema:
-            $ref: '#/definitions/internal_server_handlers_weather.Weather'
+            $ref: '#/definitions/weather.Weather'
         "400":
           description: Invalid request
           schema:

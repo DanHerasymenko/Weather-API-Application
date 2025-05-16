@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"Weather-API-Application/internal/config"
+	sh "Weather-API-Application/internal/server/handlers/subscription"
 	wh "Weather-API-Application/internal/server/handlers/weather"
 	"Weather-API-Application/internal/server/middleware"
 	"Weather-API-Application/internal/services"
@@ -11,14 +12,16 @@ import (
 )
 
 type Handlers struct {
-	Weather *wh.Handler
+	Weather      *wh.Handler
+	Subscription *sh.Handler
 
 	mdlwrs *middleware.Middlewares
 }
 
 func NewHandlers(cfg *config.Config, srvc *services.Services, mdlwrs *middleware.Middlewares) *Handlers {
 	return &Handlers{
-		Weather: wh.NewHandler(cfg, srvc),
+		Weather:      wh.NewHandler(srvc),
+		Subscription: sh.NewHandler(cfg, srvc),
 
 		mdlwrs: mdlwrs,
 	}
@@ -36,6 +39,7 @@ func (h *Handlers) RegisterRoutes(router *gin.Engine) {
 	weather := api.Group("/weather")
 	weather.GET("/", h.Weather.GetWeather)
 
-	//subscription := api.Group("/subscription")
+	subscription := api.Group("/subscription")
+	subscription.GET("/confirm/:token", h.Subscription.ConfirmSubscription)
 
 }

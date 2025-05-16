@@ -15,6 +15,47 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/subscription/confirm/{token}": {
+            "get": {
+                "description": "Confirms a subscription using the token sent in the confirmation email.",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "subscription"
+                ],
+                "summary": "Confirm email subscription",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Confirmation token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Subscription confirmed successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid token",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Token not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/weather": {
             "get": {
                 "description": "Returns the current weather forecast for the specified city using WeatherAPI.com.",
@@ -41,7 +82,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successful operation - current weather forecast returned",
                         "schema": {
-                            "$ref": "#/definitions/internal_server_handlers_weather.Weather"
+                            "$ref": "#/definitions/weather.Weather"
                         }
                     },
                     "400": {
@@ -61,23 +102,17 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "internal_server_handlers_weather.Weather": {
+        "weather.Weather": {
             "type": "object",
             "properties": {
                 "description": {
-                    "description": "Weather description",
-                    "type": "string",
-                    "example": "Sunny"
+                    "type": "string"
                 },
                 "humidity": {
-                    "description": "Current humidity percentage",
-                    "type": "integer",
-                    "example": 60
+                    "type": "number"
                 },
                 "temperature": {
-                    "description": "Current temperature",
-                    "type": "integer",
-                    "example": 25
+                    "type": "number"
                 }
             }
         }
