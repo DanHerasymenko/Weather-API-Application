@@ -27,7 +27,7 @@ This application implements a weather API that allows users to subscribe to weat
 To start the application:
 
 1. Clone the repository:
-2. Create a `.env` file in the root directory of the project. You can use the provided `.env` template below.
+2. Create a `.env` file in the root directory of the project. You can use the provided `.env` template below. (be sure to set the `WEATHER_API_KEY` and check default `8080` and `5432` ports to be free)
 3. Start the application using Docker Compose:
 ```
 docker compose up --build
