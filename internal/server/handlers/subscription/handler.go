@@ -71,18 +71,38 @@ func (h *Handler) Unsubscribe(ctx *gin.Context) {
 	ctx.String(200, "Subscription confirmed")
 }
 
+// SubscribeReqBody represents the expected payload for a subscription request.
 type SubscribeReqBody struct {
-	email      string `json:"email" binding:"required,email"`
-	city       string `json:"city" binding:"required,alphanum"`
-	fruequency string `json:"frequency" binding:"required,oneof=hourly daily"`
+	Email     string `json:"email" validate:"required,email"`
+	City      string `json:"city" validate:"required,alphanum"`
+	Frequency string `json:"frequency" validate:"required,oneof=hourly daily"`
 }
 
 // Subscribe godoc
+// @Summary      Subscribe to weather updates
+// @Description  Subscribes an email to weather updates for a specific city with the given frequency.
+// @Tags         subscription
+// @Accept       json
+// @Produce      plain
+// @Param        email      body  string  true  "Email address to subscribe"
+// @Param        city       body  string  true  "City for weather updates"
+// @Param        frequency  body  string  true  "Update frequency (daily or hourly)"
+// @Success      200        {string}  string  "Subscription successful. Confirmation email sent."
+// @Failure      400        {string}  string  "Invalid input"
+// @Failure      409        {string}  string  "Subscription already exists"
+// @Failure      500        {string}  string  "Internal server error"
+// @Router       /api/subscribe [post]
 func (h *Handler) Subscribe(ctx *gin.Context) {
 	reqBody := SubscribeReqBody{}
 
 	if err := validate.ParseReqBody(ctx, &reqBody); err != nil {
 		response.AbortWithErrorJSON(ctx, http.StatusBadRequest, err, "Email or password is invalid")
+		return
+	}
+
+	code, err := h.srvc.Subscription.Subscribe(ctx, reqBody.Email, reqBody.City, reqBody.Frequency)
+	if err != nil {
+		response.AbortWithError(ctx, code, err)
 		return
 	}
 
