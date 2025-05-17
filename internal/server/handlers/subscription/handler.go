@@ -84,6 +84,7 @@ type SubscribeReqBody struct {
 // @Tags         subscription
 // @Accept       json
 // @Produce      plain
+// @Param body body SubscribeReqBody true "SubscribeReqBody"
 // @Param        email      body  string  true  "Email address to subscribe"
 // @Param        city       body  string  true  "City for weather updates"
 // @Param        frequency  body  string  true  "Update frequency (daily or hourly)"

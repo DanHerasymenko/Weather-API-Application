@@ -29,17 +29,20 @@ func NewHandlers(cfg *config.Config, srvc *services.Services, mdlwrs *middleware
 
 func (h *Handlers) RegisterRoutes(router *gin.Engine) {
 
-	// Swagger
+	// Swagger + static index.html
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	router.Static("/static", "./static")
 
 	// API group with global log middleware
 	api := router.Group("/api")
 	api.Use(h.mdlwrs.Log.Handle)
 
+	// Weather GET
 	weather := api.Group("/weather")
 	weather.GET("/", h.Weather.GetWeather)
 
+	// Subscription operations
 	subscription := api.Group("/subscription")
+	subscription.POST("/subscribe", h.Subscription.Subscribe)
 	subscription.GET("/confirm/:token", h.Subscription.ConfirmSubscription)
-
 }
