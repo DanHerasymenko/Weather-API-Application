@@ -25,6 +25,7 @@ type Config struct {
 	Port     string `env:"SMTP_PORT"`
 }
 
+// NewConfigFromEnv creates a new Config instance and populates it with values from environment variables.
 func NewConfigFromEnv() (*Config, error) {
 	cfg := &Config{}
 	err := env.Parse(cfg)

@@ -8,6 +8,7 @@ import (
 
 const ginLoggerKey = "loggerAttrs"
 
+// ginGetLoggerAttr retrieves structured logging attributes from Gin context
 func ginGetLoggerAttr(ctx *gin.Context) []slog.Attr {
 
 	val, exists := ctx.Get(ginLoggerKey)
@@ -23,16 +24,19 @@ func ginGetLoggerAttr(ctx *gin.Context) []slog.Attr {
 
 }
 
+// ginMergeAttr merges existing Gin context attributes with new ones
 func ginMergeAttr(ctx *gin.Context, attr []slog.Attr) []slog.Attr {
 	existingAttr := ginGetLoggerAttr(ctx)
 	return append(existingAttr, attr...)
 }
 
+// GinSetLoggerAttr sets structured logging attributes into the Gin context
 func GinSetLoggerAttr(ctx *gin.Context, attrs ...slog.Attr) {
 	attr := ginMergeAttr(ctx, attrs)
 	ctx.Set(ginLoggerKey, attr)
 }
 
+// EnrichContextFromGin copies logging attributes from Gin context into standard context.Context
 func EnrichContextFromGin(baseCtx context.Context, ginCtx *gin.Context) context.Context {
 	val, ok := ginCtx.Get("loggerAttrs")
 	if !ok {

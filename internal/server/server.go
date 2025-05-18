@@ -25,6 +25,13 @@ func NewServer(cfg *config.Config) *Server {
 	}
 }
 
+// Run starts the HTTP server in a separate goroutine and handles graceful shutdown.
+//
+//   - Binds the server to the configured port.
+//   - Uses the Gin router as the HTTP handler.
+//   - Logs fatal error if the server fails unexpectedly.
+//   - Listens for OS shutdown signals (SIGINT/SIGTERM) and performs graceful shutdown
+//     using the waitForSignal helper.
 func (s *Server) Run(ctx context.Context) {
 
 	server := &http.Server{
@@ -42,6 +49,7 @@ func (s *Server) Run(ctx context.Context) {
 	waitForSignal(ctx, server)
 }
 
+// waitForSignal helper function for graceful shutdown of the server.
 func waitForSignal(ctx context.Context, srv *http.Server) {
 
 	// Wait for interrupt signal to gracefully shut down the server with

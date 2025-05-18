@@ -17,6 +17,16 @@ func NewService(cfg *config.Config) *Service {
 	}
 }
 
+// FetchWeatherForCity retrieves the current weather data for the given city
+// using the external WeatherAPI.com service.
+//
+// It performs the following steps:
+//   - Validates that the API key is present in the config.
+//   - Sends an HTTP GET request to the Weather API with the city query.
+//   - Returns 400 if the request fails to reach the API,
+//     404 if the city is not found,
+//     or 500 if decoding the response fails.
+//   - On success, returns a populated Weather struct with temperature, humidity, and description.
 func (s *Service) FetchWeatherForCity(city string) (*Weather, error, int) {
 
 	if s.cfg.WeatherApiKey == "" {

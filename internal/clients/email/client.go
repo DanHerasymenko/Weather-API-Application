@@ -13,6 +13,7 @@ func NewSMTPClient(from, password, host, port string) *SMTPClient {
 	return &SMTPClient{From: from, Password: password, Host: host, Port: port}
 }
 
+// SendEmail sends an email using the SMTP client
 func (c *SMTPClient) SendEmail(to, subject, body string) error {
 	msg := []byte("To: " + to + "\r\n" +
 		"Subject: " + subject + "\r\n" +

@@ -97,7 +97,7 @@ func (h *Handler) Subscribe(ctx *gin.Context) {
 	reqBody := SubscribeReqBody{}
 
 	if err := validate.ParseReqBody(ctx, &reqBody); err != nil {
-		response.AbortWithErrorJSON(ctx, http.StatusBadRequest, err, "Email or password is invalid")
+		response.AbortWithErrorJSON(ctx, http.StatusBadRequest, err, "Email or city is invalid")
 		return
 	}
 

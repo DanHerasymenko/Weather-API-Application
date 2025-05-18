@@ -17,7 +17,10 @@ type Client struct {
 	Postgres *pgxpool.Pool
 }
 
+// NewPostgresClient creates a new Postgres client
 func NewPostgresClient(ctx context.Context, cfg *config.Config) (*Client, error) {
+
+	// create a new Postgres connection pool
 	dsn := fmt.Sprintf(
 		"postgres://%s:%s@%s:%d/%s?sslmode=disable",
 		cfg.PostgresUser,
@@ -45,6 +48,7 @@ func NewPostgresClient(ctx context.Context, cfg *config.Config) (*Client, error)
 
 	logger.Info(ctx, "Postgres ping successful")
 
+	// run migrations if the RUN_MIGRATIONS env variable is set to true
 	if cfg.RunMigrations {
 		if err := runMigrations(ctx, dsn); err != nil {
 			return nil, err
@@ -57,6 +61,7 @@ func NewPostgresClient(ctx context.Context, cfg *config.Config) (*Client, error)
 	return &Client{Postgres: pool}, nil
 }
 
+// runMigrations runs the database migrations using goose
 func runMigrations(ctx context.Context, dsn string) error {
 
 	db, err := sql.Open("pgx", dsn)
