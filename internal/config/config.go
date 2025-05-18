@@ -6,9 +6,10 @@ import (
 )
 
 type Config struct {
-	Env     string `env:"APP_ENV"   envDefault:"local"`
-	AppPort string `env:"APP_PORT" envDefault:":8080"`
-	BaseURL string `env:"APP_BASE_URL"`
+	Env            string `env:"APP_ENV"   envDefault:"local"`
+	AppPort        string `env:"APP_PORT" envDefault:":8080"`
+	BaseURL        string `env:"APP_BASE_URL"`
+	DailyStartHour int    `env:"DAILY_START_HOUR" envDefault:"8"`
 
 	PostgresContainerHost string `env:"POSTGRES_CONTAINER_HOST"`
 	PostgresContainerPort int    `env:"POSTGRES_CONTAINER_PORT"`

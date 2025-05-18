@@ -3,6 +3,7 @@ package server
 import (
 	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/logger"
+	"Weather-API-Application/internal/services"
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -16,6 +17,7 @@ import (
 type Server struct {
 	Router *gin.Engine
 	cfg    *config.Config
+	srvc   *services.Services
 }
 
 func NewServer(cfg *config.Config) *Server {
@@ -44,6 +46,12 @@ func (s *Server) Run(ctx context.Context) {
 			logger.Fatal(ctx, fmt.Errorf("listen: %s\n", err))
 		}
 	}()
+
+	//
+	err := s.srvc.Subscription.StartScheduler(ctx)
+	if err != nil {
+		logger.Fatal(ctx, fmt.Errorf("failed to start scheduler: %w", err))
+	}
 
 	// Graceful shutdown
 	waitForSignal(ctx, server)
