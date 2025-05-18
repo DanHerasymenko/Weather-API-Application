@@ -1,6 +1,6 @@
 # Weather-API-Application
 
-**Genesis School Test Task**
+**Genesis Test Task**
 
 **Author:** [Daniil Herasymenko](https://github.com/DanHerasymenko)
 
