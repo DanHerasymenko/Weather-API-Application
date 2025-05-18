@@ -91,6 +91,7 @@
 <script>
     document.getElementById("subscribeForm").addEventListener("submit", async function (e) {
         e.preventDefault();
+
         const form = e.target;
         const payload = {
             email: form.email.value,
@@ -104,10 +105,16 @@
             body: JSON.stringify(payload),
         });
 
-        const text = await res.text();
         const responseElement = document.getElementById("response");
-        responseElement.textContent = text;
-        responseElement.style.color = res.ok ? "green" : "red";
+        const text = await res.text();
+
+        if (res.ok) {
+            responseElement.textContent = text;
+            responseElement.style.color = "green";
+        } else {
+            responseElement.textContent = `Error ${res.status}: ${text}`;
+            responseElement.style.color = "red";
+        }
     });
 </script>
 </body>
