@@ -31,6 +31,7 @@ services:
       - ./cmd:/app/cmd
       - ./internal:/app/internal
       - ./migrations:/app/migrations
+      - ./static:/app/static
     ports:
       - ${CONTAINER_PORT_MAPPING}
     depends_on:
