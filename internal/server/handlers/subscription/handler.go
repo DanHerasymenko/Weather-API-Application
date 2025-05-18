@@ -102,7 +102,18 @@ func (h *Handler) Subscribe(ctx *gin.Context) {
 		return
 	}
 
-	code, err := h.srvc.Subscription.Subscribe(ctx, reqBody.Email, reqBody.City, reqBody.Frequency)
+	// check if the city input from User is valid via WeatherAPI
+	ok, err, code := h.srvc.Subscription.ValidateCity(ctx, reqBody.City)
+	if err != nil {
+		response.AbortWithError(ctx, code, err)
+		return
+	}
+	if !ok {
+		response.AbortWithError(ctx, code, fmt.Errorf("city not found"))
+		return
+	}
+
+	code, err = h.srvc.Subscription.Subscribe(ctx, reqBody.Email, reqBody.City, reqBody.Frequency)
 	if err != nil {
 		response.AbortWithError(ctx, code, err)
 		return
