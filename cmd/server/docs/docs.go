@@ -15,86 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/subscribe": {
-            "post": {
-                "description": "Subscribes an email to weather updates for a specific city with the given frequency.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "text/plain"
-                ],
-                "tags": [
-                    "subscription"
-                ],
-                "summary": "Subscribe to weather updates",
-                "parameters": [
-                    {
-                        "description": "SubscribeReqBody",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/subscription.SubscribeReqBody"
-                        }
-                    },
-                    {
-                        "description": "Email address to subscribe",
-                        "name": "email",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "description": "City for weather updates",
-                        "name": "city",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "description": "Update frequency (daily or hourly)",
-                        "name": "frequency",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Subscription successful. Confirmation email sent.",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid input",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "409": {
-                        "description": "Subscription already exists",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/subscription/confirm/{token}": {
+        "/api/confirm/{token}": {
             "get": {
                 "description": "Confirms a subscription using the token sent in the confirmation email.",
                 "produces": [
@@ -135,7 +56,59 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/subscription/unsubscribe/{token}": {
+        "/api/subscribe": {
+            "post": {
+                "description": "Subscribes an email to weather updates for a specific city with the given frequency.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "subscription"
+                ],
+                "summary": "Subscribe to weather updates",
+                "parameters": [
+                    {
+                        "description": "SubscribeReqBody",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/subscription.SubscribeReqBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Subscription successful. Confirmation email sent.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "Subscription already exists",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/unsubscribe/{token}": {
             "get": {
                 "description": "Unsubscribes an email from weather updates using the token sent in emails.",
                 "produces": [

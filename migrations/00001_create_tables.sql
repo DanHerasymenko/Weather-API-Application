@@ -1,7 +1,7 @@
 -- +goose Up
 CREATE TABLE IF NOT EXISTS weather_subscriptions (
 
-                                     id UUID PRIMARY KEY,
+                                     id SERIAL PRIMARY KEY,
                                      email TEXT NOT NULL,
                                      city TEXT NOT NULL,
                                      frequency TEXT CHECK (frequency IN ('daily', 'hourly')) NOT NULL,

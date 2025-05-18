@@ -34,7 +34,7 @@ func (s *Service) ConfirmSubscription(ctx context.Context, token string) (int, e
 
 	row := s.clnts.PostgresClnt.Postgres.QueryRow(ctx, "SELECT id, confirmed FROM weather_subscriptions WHERE token = $1", token)
 
-	var id uuid.UUID
+	var id int
 	var confirmed bool
 
 	err := row.Scan(&id, &confirmed)

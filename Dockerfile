@@ -11,6 +11,7 @@ FROM base as build
 COPY cmd ./cmd
 COPY internal ./internal
 COPY migrations ./migrations
+COPY static ./static
 #RUN apk add --no-cache gcc musl-dev make swag
 #RUN swag init -g cmd/server/main.go -o cmd/server/docs
 RUN mkdir -p /build

@@ -31,7 +31,7 @@ func NewHandler(cfg *config.Config, srvc *services.Services) *Handler {
 // @Success      200    {string}  string  "Subscription confirmed successfully"
 // @Failure      400    {string}  string  "Invalid token"
 // @Failure      404    {string}  string  "Token not found"
-// @Router       /api/subscription/confirm/{token} [get]
+// @Router       /api/confirm/{token} [get]
 func (h *Handler) ConfirmSubscription(ctx *gin.Context) {
 
 	token := ctx.Param("token")
@@ -58,7 +58,7 @@ func (h *Handler) ConfirmSubscription(ctx *gin.Context) {
 // @Success      200    {string}  string  "Unsubscribed successfully"
 // @Failure      400    {string}  string  "Invalid token"
 // @Failure      404    {string}  string  "Token not found"
-// @Router       /api/subscription/unsubscribe/{token} [get]
+// @Router       /api/unsubscribe/{token} [get]
 func (h *Handler) Unsubscribe(ctx *gin.Context) {
 
 	token := ctx.Param("token")
@@ -68,7 +68,7 @@ func (h *Handler) Unsubscribe(ctx *gin.Context) {
 		return
 	}
 
-	ctx.String(200, "Subscription confirmed")
+	ctx.String(200, "Unsubscribed successfully")
 }
 
 // SubscribeReqBody represents the expected payload for a subscription request.
@@ -78,6 +78,10 @@ type SubscribeReqBody struct {
 	Frequency string `json:"frequency" validate:"required,oneof=hourly daily"`
 }
 
+// @Param        email      body  string  true  "Email address to subscribe"
+// @Param        city       body  string  true  "City for weather updates"
+// @Param        frequency  body  string  true  "Update frequency (daily or hourly)"
+
 // Subscribe godoc
 // @Summary      Subscribe to weather updates
 // @Description  Subscribes an email to weather updates for a specific city with the given frequency.
@@ -85,9 +89,6 @@ type SubscribeReqBody struct {
 // @Accept       json
 // @Produce      plain
 // @Param body body SubscribeReqBody true "SubscribeReqBody"
-// @Param        email      body  string  true  "Email address to subscribe"
-// @Param        city       body  string  true  "City for weather updates"
-// @Param        frequency  body  string  true  "Update frequency (daily or hourly)"
 // @Success      200        {string}  string  "Subscription successful. Confirmation email sent."
 // @Failure      400        {string}  string  "Invalid input"
 // @Failure      409        {string}  string  "Subscription already exists"

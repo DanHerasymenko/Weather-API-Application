@@ -8,7 +8,7 @@ import (
 type Config struct {
 	Env     string `env:"APP_ENV"   envDefault:"local"`
 	AppPort string `env:"APP_PORT" envDefault:":8080"`
-	BaseURL string `env:"BASE_URL"`
+	BaseURL string `env:"APP_BASE_URL"`
 
 	PostgresContainerHost string `env:"POSTGRES_CONTAINER_HOST"`
 	PostgresContainerPort int    `env:"POSTGRES_CONTAINER_PORT"`
