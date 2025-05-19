@@ -4,8 +4,8 @@
 
 **Author:** [Daniil Herasymenko](https://github.com/DanHerasymenko)
 
-**Link to render:** https://weather-api-application-onag.onrender.com 
-
+**Link to swagger:** https://8082-danherasyme-weatherapia-p1ein46369r.ws-eu118.gitpod.io/swagger/index.html#
+**Link to static:** https://8082-danherasyme-weatherapia-p1ein46369r.ws-eu118.gitpod.io/static
 
 This application implements a Weather API that allows users to subscribe to daily or hourly weather updates for a selected city. Subscribed users receive periodic emails with forecasts, and the system automatically schedules updates based on the selected frequency. The application also supports subscription confirmation, unsubscription, and background processing of updates.
 
