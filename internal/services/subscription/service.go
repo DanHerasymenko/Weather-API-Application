@@ -9,17 +9,22 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"net/http"
+	"sync"
 )
 
 type Service struct {
 	cfg   *config.Config
 	clnts *clients.Clients
+
+	routines map[string]context.CancelFunc
+	mu       sync.Mutex
 }
 
 func NewService(cfg *config.Config, clnts *clients.Clients) *Service {
 	return &Service{
-		cfg:   cfg,
-		clnts: clnts,
+		cfg:      cfg,
+		clnts:    clnts,
+		routines: make(map[string]context.CancelFunc),
 	}
 }
 
@@ -63,20 +68,45 @@ func (s *Service) ConfirmSubscription(ctx context.Context, token string) (int, e
 
 // Unsubscribe removes a weather subscription using the provided confirmation token.
 //
+// This method performs three steps:
+//  1. Retrieves the subscription (email, city, frequency) by token.
+//  2. Deletes the subscription from the database.
+//  3. Stops the background weather update routine associated with that subscription,
+//     by calling the stored context.CancelFunc and removing it from the routines map.
+//
 // Returns:
-//   - 200 OK if successfully unsubscribed
-//   - 404 if token not found
-//   - 500 for DB errors
+//   - 200 OK if successfully unsubscribed and routine was stopped.
+//   - 404 if the token does not match any subscription.
+//   - 500 if a database or internal error occurred.
 func (s *Service) Unsubscribe(ctx context.Context, token string) (int, error) {
 
-	result, err := s.clnts.PostgresClnt.Postgres.Exec(ctx, "DELETE FROM weather_subscriptions WHERE token = $1", token)
+	// 1.Fetch the subscription details using the token
+	var sub Subscription
+	query := "SELECT email, city, frequency FROM weather_subscriptions WHERE token = $1"
+	err := s.clnts.PostgresClnt.Postgres.QueryRow(ctx, query, token).
+		Scan(&sub.Email, &sub.City, &sub.Frequency)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return http.StatusNotFound, fmt.Errorf("subscription not found")
+		}
+		return http.StatusInternalServerError, fmt.Errorf("failed to fetch subscription: %w", err)
+	}
+
+	// 2.Delete the subscription from the database
+	_, err = s.clnts.PostgresClnt.Postgres.Exec(ctx, "DELETE FROM weather_subscriptions WHERE token = $1", token)
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("failed to delete subscription: %w", err)
 	}
 
-	if result.RowsAffected() == 0 {
-		return http.StatusNotFound, fmt.Errorf("subscription not found")
+	// 3.Stop the routine
+	key := s.MakeKey(sub)
+
+	s.mu.Lock()
+	if cancel, ok := s.routines[key]; ok {
+		cancel()
+		delete(s.routines, key)
 	}
+	s.mu.Unlock()
 
 	return http.StatusOK, nil
 }

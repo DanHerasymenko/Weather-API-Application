@@ -30,7 +30,17 @@ func (s *Service) StartScheduler(ctx context.Context) error {
 	}
 
 	for _, sub := range subs {
-		go s.startRoutine(ctx, sub)
+
+		// For each subscription, create a new own context with a cancel function
+		subCtx, cancel := context.WithCancel(ctx)
+		key := s.MakeKey(sub)
+
+		s.mu.Lock()
+		s.routines[key] = cancel
+		s.mu.Unlock()
+
+		// Start the routine for this particular subscription
+		go s.startRoutine(subCtx, sub)
 	}
 
 	logger.Info(ctx, fmt.Sprintf("Starting %d subscription routines", len(subs)))
@@ -155,4 +165,8 @@ func (s *Service) sendUpdate(ctx context.Context, sub Subscription) error {
 	}
 
 	return nil
+}
+
+func (s *Service) MakeKey(sub Subscription) string {
+	return fmt.Sprintf("%s|%s", sub.Email, strings.ToLower(sub.City))
 }

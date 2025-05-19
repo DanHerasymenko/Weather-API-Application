@@ -22,7 +22,7 @@ services:
   weather_service:
     build:
       context: .
-      target: dev
+      target: build
       dockerfile: Dockerfile
     env_file:
       - .env
