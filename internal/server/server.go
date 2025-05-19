@@ -41,16 +41,16 @@ func (s *Server) Run(ctx context.Context) {
 		Handler: s.Router,
 	}
 
+	// Start server in background
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Fatal(ctx, fmt.Errorf("listen: %s\n", err))
 		}
 	}()
 
-	//
-	err := s.srvc.Subscription.StartScheduler(ctx)
-	if err != nil {
-		logger.Fatal(ctx, fmt.Errorf("failed to start scheduler: %w", err))
+	// Start weather update scheduler (send e-mail goroutines)
+	if err := s.srvc.Subscription.StartScheduler(ctx); err != nil {
+		logger.Fatal(ctx, fmt.Errorf("failed to start subscription scheduler: %w", err))
 	}
 
 	// Graceful shutdown

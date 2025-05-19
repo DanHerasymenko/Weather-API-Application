@@ -20,7 +20,8 @@ type Subscription struct {
 	Frequency string
 }
 
-// Start launches background routines for confirmed subscriptions
+// StartScheduler fetches all confirmed subscriptions from the database
+// and starts a background goroutine for each one to send periodic weather updates.
 func (s *Service) StartScheduler(ctx context.Context) error {
 
 	subs, err := s.fetchConfirmedSubscriptions(ctx)
@@ -37,6 +38,8 @@ func (s *Service) StartScheduler(ctx context.Context) error {
 	return nil
 }
 
+// fetchConfirmedSubscriptions retrieves all confirmed email-city-frequency subscriptions
+// from the database to be used for scheduling update routines.
 func (s *Service) fetchConfirmedSubscriptions(ctx context.Context) ([]Subscription, error) {
 
 	rows, err := s.clnts.PostgresClnt.Postgres.Query(ctx, "SELECT email, city, frequency FROM weather_subscriptions WHERE confirmed = true")
@@ -57,22 +60,43 @@ func (s *Service) fetchConfirmedSubscriptions(ctx context.Context) ([]Subscripti
 	return subs, nil
 }
 
+// startRoutine runs a background loop for a single subscription.
+// It determines whether the updates should be sent hourly or daily,
+// waits for the correct interval, then periodically calls sendUpdate.
+// The routine stops when the provided context is cancelled.
 func (s *Service) startRoutine(ctx context.Context, sub Subscription) {
 
-	// Set the interval based on the subscription frequency
+	// Detect the interval based on the subscription frequency
 	interval := time.Hour
 	if strings.ToLower(sub.Frequency) == "daily" {
 		interval = 24 * time.Hour
-		// Wait until next 8AM (or custom hour)
+
+		// Calculate how long to wait until the next daily update
 		now := time.Now()
-		next := time.Date(now.Year(), now.Month(), now.Day(), s.cfg.DailyStartHour, 0, 0, 0, now.Location())
+		next := time.Date(
+			now.Year(), now.Month(), now.Day(),
+			s.cfg.DailyStartHour, 0, 0, 0,
+			now.Location(),
+		)
+
+		// If current time is after the next scheduled time, add 24 hours
 		if now.After(next) {
 			next = next.Add(24 * time.Hour)
 		}
-		time.Sleep(time.Until(next))
+
+		// Wait until the next scheduled time
+		select {
+		case <-time.After(time.Until(next)):
+			// continue to the loop with proper start time
+		case <-ctx.Done():
+			logger.Info(ctx, fmt.Sprintf("Routine cancelled before first run: %s - %s", sub.Email, sub.City))
+			return
+		}
+	} else {
+		interval = time.Hour
 	}
 
-	// Start the ticker for the subscription
+	// Create a ticker to send updates with the specified interval
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -81,15 +105,18 @@ func (s *Service) startRoutine(ctx context.Context, sub Subscription) {
 		case <-ctx.Done():
 			logger.Info(ctx, fmt.Sprintf("Stopping routine for %s - %s", sub.Email, sub.City))
 			return
+
 		case <-ticker.C:
-			err := s.sendUpdate(sub)
-			if err != nil {
+			if err := s.sendUpdate(sub); err != nil {
 				logger.Error(ctx, err)
 			}
 		}
 	}
 }
 
+// sendUpdate fetches the current weather data for the given subscription's city,
+// formats it into a plain text message, and sends it via email to the subscriber.
+// Returns an error if any of the steps fail (HTTP request, JSON parsing, or email sending).
 func (s *Service) sendUpdate(sub Subscription) error {
 
 	// Fetch the weather data for the city
@@ -109,14 +136,13 @@ func (s *Service) sendUpdate(sub Subscription) error {
 		return fmt.Errorf("city not found: failed to fetch weather data: %s", resp.Status)
 	}
 
-	// Decode the response
 	var weatherApiResp weather.WeatherAPIResponse
 	if err = json.NewDecoder(resp.Body).Decode(&weatherApiResp); err != nil {
 		return fmt.Errorf("failed to decode weather data: %w", err)
 	}
 
 	// Prepare the email content
-	weatherMailText := fmt.Sprintf("Weather for %s:\n- temperature: %f\n- humidity: %f\n- description: %s", sub.City, weatherApiResp.Current.TempC, weatherApiResp.Current.Humidity, weatherApiResp.Current.Condition.Text)
+	weatherMailText := fmt.Sprintf("Weather for %s:\n- temperature: %.1f°C\n- humidity: %.0f%%\n- description: %s", sub.City, weatherApiResp.Current.TempC, weatherApiResp.Current.Humidity, weatherApiResp.Current.Condition.Text)
 	subject := fmt.Sprintf("%s forecast", sub.City)
 
 	// Send the email
