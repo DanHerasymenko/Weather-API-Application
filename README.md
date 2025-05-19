@@ -4,6 +4,7 @@
 
 **Author:** [Daniil Herasymenko](https://github.com/DanHerasymenko)
 
+**Link to render:** https://weather-api-application-onag.onrender.com 
 
 
 This application implements a Weather API that allows users to subscribe to daily or hourly weather updates for a selected city. Subscribed users receive periodic emails with forecasts, and the system automatically schedules updates based on the selected frequency. The application also supports subscription confirmation, unsubscription, and background processing of updates.
