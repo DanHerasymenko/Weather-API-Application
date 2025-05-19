@@ -110,6 +110,7 @@ func (s *Service) startRoutine(ctx context.Context, sub Subscription) {
 			if err := s.sendUpdate(sub); err != nil {
 				logger.Error(ctx, err)
 			}
+			logger.Info(ctx, fmt.Sprintf("Weather update sent to %s for city %s", sub.Email, sub.City))
 		}
 	}
 }
@@ -149,5 +150,6 @@ func (s *Service) sendUpdate(sub Subscription) error {
 	if err := s.clnts.EmailClnt.SendEmail(sub.Email, subject, weatherMailText); err != nil {
 		return fmt.Errorf("failed to send email to %s for city %s: %w", sub.Email, sub.City, err)
 	}
+
 	return nil
 }
