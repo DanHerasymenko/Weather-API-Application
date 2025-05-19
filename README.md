@@ -6,7 +6,7 @@
 
 
 
-This application implements a weather API that allows users to subscribe to weather updates for a selected city on a daily or hourly basis.
+This application implements a Weather API that allows users to subscribe to daily or hourly weather updates for a selected city. Subscribed users receive periodic emails with forecasts, and the system automatically schedules updates based on the selected frequency. The application also supports subscription confirmation, unsubscription, and background processing of updates.
 
 ---
 
@@ -84,12 +84,23 @@ goose -dir ./migrations postgres "postgres://user:password@localhost:5432/weathe
 
 ## Application Logic
 
-1. User fills out the subscription form at `/static`
-2. `POST /api/subscribe` is called
-3. If the subscription is new or not yet confirmed, a confirmation token is generated and emailed
-4. Confirmation is handled via `GET /api/subscription/confirm/{token}`
-5. Unsubscription is available via `GET /api/subscription/unsubscribe/{token}`
 
+
+1. User fills out the subscription form at `/static`.
+
+2. `POST /api/subscribe` is called:
+    - If the subscription is **new or not confirmed**, a unique confirmation token is generated and sent via email.
+    - If already confirmed, the system ignores re-submission.
+
+3. User confirms the subscription via `GET /api/subscription/confirm/{token}`:
+    - The confirmation activates the subscription and schedules automatic weather updates.
+
+4. Periodic update logic:
+    - Based on the selected frequency (`daily` or `hourly`), a background scheduler starts sending weather updates.
+    - Each confirmed subscription runs in its own background routine.
+5. User can unsubscribe anytime via `GET /api/subscription/unsubscribe/{token}`:
+    - This action stops future updates and removes the subscription.
+    
 ---
 
 ## Implemented Endpoints
