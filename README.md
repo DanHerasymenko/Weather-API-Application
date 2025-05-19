@@ -90,7 +90,7 @@ goose -dir ./migrations postgres "postgres://user:password@localhost:5432/weathe
 
 2. `POST /api/subscribe` is called:
     - If the subscription is **new or not confirmed**, a unique confirmation token is generated and sent via email.
-    - If already confirmed, the system ignores re-submission.
+    - If already confirmed: 409 - email already subscribed.
 
 3. User confirms the subscription via `GET /api/subscription/confirm/{token}`:
     - The confirmation activates the subscription and schedules automatic weather updates.
@@ -98,6 +98,7 @@ goose -dir ./migrations postgres "postgres://user:password@localhost:5432/weathe
 4. Periodic update logic:
     - Based on the selected frequency (`daily` or `hourly`), a background scheduler starts sending weather updates.
     - Each confirmed subscription runs in its own background routine.
+   
 5. User can unsubscribe anytime via `GET /api/subscription/unsubscribe/{token}`:
     - This action stops future updates and removes the subscription.
     
