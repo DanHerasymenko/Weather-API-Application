@@ -48,11 +48,6 @@ func (s *Server) Run(ctx context.Context) {
 		}
 	}()
 
-	// Start weather update scheduler (send e-mail goroutines)
-	if err := s.srvc.Subscription.StartScheduler(ctx); err != nil {
-		logger.Fatal(ctx, fmt.Errorf("failed to start subscription scheduler: %w", err))
-	}
-
 	// Graceful shutdown
 	waitForSignal(ctx, server)
 }

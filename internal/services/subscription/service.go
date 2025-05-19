@@ -32,28 +32,31 @@ func NewService(cfg *config.Config, clnts *clients.Clients) *Service {
 //   - 500 for unexpected errors
 func (s *Service) ConfirmSubscription(ctx context.Context, token string) (int, error) {
 
-	row := s.clnts.PostgresClnt.Postgres.QueryRow(ctx, "SELECT id, confirmed FROM weather_subscriptions WHERE token = $1", token)
+	row := s.clnts.PostgresClnt.Postgres.QueryRow(ctx, "SELECT id, email, city, frequency, confirmed FROM weather_subscriptions WHERE token = $1", token)
 
 	var id int
+	var sub Subscription
 	var confirmed bool
 
-	err := row.Scan(&id, &confirmed)
+	err := row.Scan(&id, &sub.Email, &sub.City, &sub.Frequency, &confirmed)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return http.StatusNotFound, fmt.Errorf("subscription not found")
 	}
-
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("failed to scan subscription: %w", err)
 	}
-
 	if confirmed {
 		return http.StatusBadRequest, fmt.Errorf("subscription already confirmed")
 	}
 
+	// Mark subscription as confirmed
 	_, err = s.clnts.PostgresClnt.Postgres.Exec(ctx, "UPDATE weather_subscriptions SET confirmed = true WHERE id = $1", id)
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("failed to update subscription: %w", err)
 	}
+
+	// Start the weather update routine for the confirmed subscription
+	go s.startRoutine(ctx, sub)
 
 	return http.StatusOK, nil
 }

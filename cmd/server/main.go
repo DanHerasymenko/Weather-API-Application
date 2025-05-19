@@ -50,4 +50,9 @@ func main() {
 
 	// Run server
 	srvr.Run(ctx)
+
+	// Start weather update scheduler (send e-mail goroutines)
+	if err := srvc.Subscription.StartScheduler(ctx); err != nil {
+		logger.Fatal(ctx, fmt.Errorf("failed to start subscription scheduler: %w", err))
+	}
 }
