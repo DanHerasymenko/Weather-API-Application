@@ -1,6 +1,10 @@
 package email
 
-import "net/smtp"
+import (
+	"Weather-API-Application/internal/logger"
+	"context"
+	"net/smtp"
+)
 
 type SMTPClient struct {
 	From     string
@@ -14,7 +18,7 @@ func NewSMTPClient(from, password, host, port string) *SMTPClient {
 }
 
 // SendEmail sends an email using the SMTP client
-func (c *SMTPClient) SendEmail(to, subject, body string) error {
+func (c *SMTPClient) SendEmail(ctx context.Context, to, subject, body string) error {
 	msg := []byte("To: " + to + "\r\n" +
 		"Subject: " + subject + "\r\n" +
 		"MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n" +
@@ -22,5 +26,12 @@ func (c *SMTPClient) SendEmail(to, subject, body string) error {
 
 	auth := smtp.PlainAuth("", c.From, c.Password, c.Host)
 
-	return smtp.SendMail(c.Host+":"+c.Port, auth, c.From, []string{to}, msg)
+	// Send the email
+	err := smtp.SendMail(c.Host+":"+c.Port, auth, c.From, []string{to}, msg)
+	if err != nil {
+		return err
+	}
+	logger.Info(ctx, "Email sent successfully to "+to)
+
+	return nil
 }

@@ -113,6 +113,17 @@ goose -dir ./migrations postgres "postgres://user:password@localhost:5432/weathe
 | GET    | /api/subscription/unsubscribe/{token} | Unsubscribe from updates |
 
 
-
-
 ---
+
+## Example Email Output
+
+Once a weather update is triggered, subscribers receive an email like the following:
+
+```
+Subject: Irpin forecast
+
+Weather for Irpin:
+- temperature: 15.8°C
+- humidity: 52%
+- description: Patchy rain nearby
+```

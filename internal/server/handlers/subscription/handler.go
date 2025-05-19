@@ -103,7 +103,7 @@ func (h *Handler) Subscribe(ctx *gin.Context) {
 	}
 
 	// check if the city input from User is valid via WeatherAPI
-	ok, err, code := h.srvc.Subscription.ValidateCity(ctx, reqBody.City)
+	ok, err, code := h.srvc.Subscription.ValidateCity(reqBody.City)
 	if err != nil {
 		response.AbortWithError(ctx, code, err)
 		return

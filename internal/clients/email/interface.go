@@ -1,6 +1,8 @@
 package email
 
+import "context"
+
 // Client is an interface that defines the methods for sending emails
 type Client interface {
-	SendEmail(to, subject, body string) error
+	SendEmail(ctx context.Context, to, subject, body string) error
 }

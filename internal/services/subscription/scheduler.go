@@ -107,7 +107,9 @@ func (s *Service) startRoutine(ctx context.Context, sub Subscription) {
 			return
 
 		case <-ticker.C:
-			if err := s.sendUpdate(sub); err != nil {
+
+			logger.Info(ctx, fmt.Sprintf("Attempting to send update to %s for %s", sub.Email, sub.City))
+			if err := s.sendUpdate(ctx, sub); err != nil {
 				logger.Error(ctx, err)
 			}
 			logger.Info(ctx, fmt.Sprintf("Weather update sent to %s for city %s", sub.Email, sub.City))
@@ -118,7 +120,7 @@ func (s *Service) startRoutine(ctx context.Context, sub Subscription) {
 // sendUpdate fetches the current weather data for the given subscription's city,
 // formats it into a plain text message, and sends it via email to the subscriber.
 // Returns an error if any of the steps fail (HTTP request, JSON parsing, or email sending).
-func (s *Service) sendUpdate(sub Subscription) error {
+func (s *Service) sendUpdate(ctx context.Context, sub Subscription) error {
 
 	// Fetch the weather data for the city
 	if s.cfg.WeatherApiKey == "" {
@@ -143,11 +145,12 @@ func (s *Service) sendUpdate(sub Subscription) error {
 	}
 
 	// Prepare the email content
-	weatherMailText := fmt.Sprintf("Weather for %s:\n- temperature: %.1f°C\n- humidity: %.0f%%\n- description: %s", sub.City, weatherApiResp.Current.TempC, weatherApiResp.Current.Humidity, weatherApiResp.Current.Condition.Text)
+	weatherMailText := fmt.Sprintf(`Weather for %s:<br>- temperature: %.1f°C<br>- humidity: %.0f%%<br>- description: %s`,
+		sub.City, weatherApiResp.Current.TempC, weatherApiResp.Current.Humidity, weatherApiResp.Current.Condition.Text)
 	subject := fmt.Sprintf("%s forecast", sub.City)
 
 	// Send the email
-	if err := s.clnts.EmailClnt.SendEmail(sub.Email, subject, weatherMailText); err != nil {
+	if err := s.clnts.EmailClnt.SendEmail(ctx, sub.Email, subject, weatherMailText); err != nil {
 		return fmt.Errorf("failed to send email to %s for city %s: %w", sub.Email, sub.City, err)
 	}
 

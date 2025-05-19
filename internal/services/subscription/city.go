@@ -1,13 +1,12 @@
 package subscription
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 )
 
 // ValidateCity checks if the provided city is valid by making a request to the WeatherAPI.com service.
-func (s *Service) ValidateCity(ctx context.Context, city string) (bool, error, int) {
+func (s *Service) ValidateCity(city string) (bool, error, int) {
 
 	if s.cfg.WeatherApiKey == "" {
 		return false, fmt.Errorf("can not validate city: weather API key is missing in config"), http.StatusInternalServerError

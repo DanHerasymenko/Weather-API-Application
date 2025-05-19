@@ -117,7 +117,7 @@ func (s *Service) Subscribe(ctx context.Context, email, city, frequency string) 
 		}
 
 		// send confirmation email
-		if err := s.clnts.EmailClnt.SendEmail(email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, newToken)); err != nil {
+		if err := s.clnts.EmailClnt.SendEmail(ctx, email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, newToken)); err != nil {
 			return http.StatusInternalServerError, fmt.Errorf("failed to send confirmation email: %w", err)
 		}
 		return http.StatusOK, nil
@@ -134,7 +134,7 @@ func (s *Service) Subscribe(ctx context.Context, email, city, frequency string) 
 		}
 
 		// send confirmation email
-		if err := s.clnts.EmailClnt.SendEmail(email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, newToken)); err != nil {
+		if err := s.clnts.EmailClnt.SendEmail(ctx, email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, newToken)); err != nil {
 			return http.StatusInternalServerError, fmt.Errorf("failed to send confirmation email: %w", err)
 		}
 		return http.StatusOK, nil
