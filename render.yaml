@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: weather-api
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    buildCommand: ""
+    startCommand: "docker-compose up"
