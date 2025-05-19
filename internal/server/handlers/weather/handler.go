@@ -26,7 +26,7 @@ func NewHandler(srvc *services.Services) *Handler {
 // @Success      200   {object}  Weather  "Successful operation - current weather forecast returned"
 // @Failure 400 {string} string "Invalid request"
 // @Failure 404 {string} string "City not found"
-// @Router       /api/weather [get]
+// @Router       /weather [get]
 func (h *Handler) GetWeather(ctx *gin.Context) {
 
 	city := ctx.Query("city")

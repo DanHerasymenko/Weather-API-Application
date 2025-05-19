@@ -2,12 +2,12 @@ package subscription
 
 import (
 	"Weather-API-Application/internal/config"
+	"Weather-API-Application/internal/logger"
 	"Weather-API-Application/internal/services"
 	"Weather-API-Application/internal/utils/response"
 	"Weather-API-Application/internal/utils/validate"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"net/http"
 )
 
 type Handler struct {
@@ -22,6 +22,84 @@ func NewHandler(cfg *config.Config, srvc *services.Services) *Handler {
 	}
 }
 
+// swagger:model Subscription
+type Subscription struct {
+	// Email address
+	Email string `json:"email"`
+
+	// City for weather updates
+	City string `json:"city"`
+
+	// Frequency of updates
+	// Enum: hourly, daily
+	Frequency string `json:"frequency"`
+
+	// Whether the subscription is confirmed
+	Confirmed bool `json:"confirmed"`
+}
+
+// Subscribe godoc
+// @Summary      Subscribe to weather updates
+// @Description  Subscribes an email to weather updates for a specific city with the given frequency.
+// @Tags         subscription
+// @Accept       application/x-www-form-urlencoded
+// @Produce      text/plain
+// @Param        email formData string true "Email address to subscribe"
+// @Param        city formData string true "City for weather updates"
+// @Param        frequency formData string true "Frequency of updates (hourly or daily)" Enums(hourly, daily)
+// @Success 200 {object} Subscription "Subscription successful. Confirmation email sent."
+// @Failure      400 {string} string "Invalid input"
+// @Failure      409 {string} string "Email already subscribed"
+// @Failure      500 {string} string "Internal server error"
+// @Router       /subscribe [post]
+func (h *Handler) Subscribe(ctx *gin.Context) {
+
+	email := ctx.PostForm("email")
+	city := ctx.PostForm("city")
+	frequency := ctx.PostForm("frequency")
+
+	if email == "" || city == "" {
+		response.AbortWithErrorJSON(ctx, 400, fmt.Errorf("missing fields"), "Email and city are required")
+		return
+	}
+	if frequency != "hourly" && frequency != "daily" {
+		response.AbortWithErrorJSON(ctx, 400, fmt.Errorf("invalid frequency"), "Frequency must be 'hourly' or 'daily'")
+		return
+	}
+	if !validate.IsValidEmail(email) {
+		response.AbortWithErrorJSON(ctx, 400, fmt.Errorf("invalid email"), "Email format is invalid")
+		return
+	}
+
+	reqBody := Subscription{
+		Email:     email,
+		City:      city,
+		Frequency: frequency,
+	}
+	logger.Info(ctx, fmt.Sprintf("VALIDATE INPUT: email=%s | city=%s | frequency=%s", email, city, frequency))
+
+	// check if the city input from User is valid via WeatherAPI
+	ok, err, code := h.srvc.Subscription.ValidateCity(reqBody.City)
+	logger.Info(ctx, fmt.Sprintf("VALIDATE CITY: %s | ok=%v | err=%v | code=%d", city, ok, err, code))
+
+	if err != nil {
+		response.AbortWithError(ctx, code, err)
+		return
+	}
+	if !ok {
+		response.AbortWithError(ctx, code, fmt.Errorf("city not found"))
+		return
+	}
+
+	code, err = h.srvc.Subscription.Subscribe(ctx, reqBody.Email, reqBody.City, reqBody.Frequency)
+	if err != nil {
+		response.AbortWithError(ctx, code, err)
+		return
+	}
+
+	ctx.String(200, "Subscription successful. Confirmation email sent.")
+}
+
 // ConfirmSubscription godoc
 // @Summary      Confirm email subscription
 // @Description  Confirms a subscription using the token sent in the confirmation email.
@@ -31,7 +109,7 @@ func NewHandler(cfg *config.Config, srvc *services.Services) *Handler {
 // @Success      200    {string}  string  "Subscription confirmed successfully"
 // @Failure      400    {string}  string  "Invalid token"
 // @Failure      404    {string}  string  "Token not found"
-// @Router       /api/confirm/{token} [get]
+// @Router       /confirm/{token} [get]
 func (h *Handler) ConfirmSubscription(ctx *gin.Context) {
 
 	token := ctx.Param("token")
@@ -58,7 +136,7 @@ func (h *Handler) ConfirmSubscription(ctx *gin.Context) {
 // @Success      200    {string}  string  "Unsubscribed successfully"
 // @Failure      400    {string}  string  "Invalid token"
 // @Failure      404    {string}  string  "Token not found"
-// @Router       /api/unsubscribe/{token} [get]
+// @Router       /unsubscribe/{token} [get]
 func (h *Handler) Unsubscribe(ctx *gin.Context) {
 
 	token := ctx.Param("token")
@@ -69,55 +147,4 @@ func (h *Handler) Unsubscribe(ctx *gin.Context) {
 	}
 
 	ctx.String(200, "Unsubscribed successfully")
-}
-
-// SubscribeReqBody represents the expected payload for a subscription request.
-type SubscribeReqBody struct {
-	Email     string `json:"email" validate:"required,email"`
-	City      string `json:"city" validate:"required,alphanum"`
-	Frequency string `json:"frequency" validate:"required,oneof=hourly daily"`
-}
-
-// @Param        email      body  string  true  "Email address to subscribe"
-// @Param        city       body  string  true  "City for weather updates"
-// @Param        frequency  body  string  true  "Update frequency (daily or hourly)"
-
-// Subscribe godoc
-// @Summary      Subscribe to weather updates
-// @Description  Subscribes an email to weather updates for a specific city with the given frequency.
-// @Tags         subscription
-// @Accept       json
-// @Produce      plain
-// @Param body body SubscribeReqBody true "SubscribeReqBody"
-// @Success      200        {string}  string  "Subscription successful. Confirmation email sent."
-// @Failure      400        {string}  string  "Invalid input"
-// @Failure      409        {string}  string  "Subscription already exists"
-// @Failure      500        {string}  string  "Internal server error"
-// @Router       /api/subscribe [post]
-func (h *Handler) Subscribe(ctx *gin.Context) {
-	reqBody := SubscribeReqBody{}
-
-	if err := validate.ParseReqBody(ctx, &reqBody); err != nil {
-		response.AbortWithErrorJSON(ctx, http.StatusBadRequest, err, "Email or city is invalid")
-		return
-	}
-
-	// check if the city input from User is valid via WeatherAPI
-	ok, err, code := h.srvc.Subscription.ValidateCity(reqBody.City)
-	if err != nil {
-		response.AbortWithError(ctx, code, err)
-		return
-	}
-	if !ok {
-		response.AbortWithError(ctx, code, fmt.Errorf("city not found"))
-		return
-	}
-
-	code, err = h.srvc.Subscription.Subscribe(ctx, reqBody.Email, reqBody.City, reqBody.Frequency)
-	if err != nil {
-		response.AbortWithError(ctx, code, err)
-		return
-	}
-
-	ctx.String(200, "Subscription successful. Confirmation email sent.")
 }

@@ -1,27 +1,32 @@
+basePath: /api
 definitions:
-  subscription.SubscribeReqBody:
+  internal_server_handlers_subscription.Subscription:
     properties:
       city:
+        description: City for weather updates
         type: string
+      confirmed:
+        description: Whether the subscription is confirmed
+        type: boolean
       email:
+        description: Email address
         type: string
       frequency:
-        enum:
-        - hourly
-        - daily
+        description: |-
+          Frequency of updates
+          Enum: hourly, daily
         type: string
-    required:
-    - city
-    - email
-    - frequency
     type: object
   weather.Weather:
     properties:
       description:
+        description: Weather description
         type: string
       humidity:
+        description: Current humidity percentage
         type: number
       temperature:
+        description: Current temperature
         type: number
     type: object
 info:
@@ -29,9 +34,9 @@ info:
   description: Weather API application that allows users to subscribe to weather updates
     for their city.
   title: Weather Forecast API
-  version: "1.0"
+  version: 1.0.0
 paths:
-  /api/confirm/{token}:
+  /confirm/{token}:
     get:
       description: Confirms a subscription using the token sent in the confirmation
         email.
@@ -59,32 +64,44 @@ paths:
       summary: Confirm email subscription
       tags:
       - subscription
-  /api/subscribe:
+  /subscribe:
     post:
       consumes:
-      - application/json
+      - application/x-www-form-urlencoded
       description: Subscribes an email to weather updates for a specific city with
         the given frequency.
       parameters:
-      - description: SubscribeReqBody
-        in: body
-        name: body
+      - description: Email address to subscribe
+        in: formData
+        name: email
         required: true
-        schema:
-          $ref: '#/definitions/subscription.SubscribeReqBody'
+        type: string
+      - description: City for weather updates
+        in: formData
+        name: city
+        required: true
+        type: string
+      - description: Frequency of updates (hourly or daily)
+        enum:
+        - hourly
+        - daily
+        in: formData
+        name: frequency
+        required: true
+        type: string
       produces:
       - text/plain
       responses:
         "200":
           description: Subscription successful. Confirmation email sent.
           schema:
-            type: string
+            $ref: '#/definitions/internal_server_handlers_subscription.Subscription'
         "400":
           description: Invalid input
           schema:
             type: string
         "409":
-          description: Subscription already exists
+          description: Email already subscribed
           schema:
             type: string
         "500":
@@ -94,7 +111,7 @@ paths:
       summary: Subscribe to weather updates
       tags:
       - subscription
-  /api/unsubscribe/{token}:
+  /unsubscribe/{token}:
     get:
       description: Unsubscribes an email from weather updates using the token sent
         in emails.
@@ -122,7 +139,7 @@ paths:
       summary: Unsubscribe from weather updates
       tags:
       - subscription
-  /api/weather:
+  /weather:
     get:
       consumes:
       - application/json
@@ -152,4 +169,12 @@ paths:
       summary: Get current weather for a city
       tags:
       - weather
+schemes:
+- http
+- https
 swagger: "2.0"
+tags:
+- description: Weather forecast operations
+  name: weather
+- description: Subscription management operations
+  name: subscription

@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/confirm/{token}": {
+        "/confirm/{token}": {
             "get": {
                 "description": "Confirms a subscription using the token sent in the confirmation email.",
                 "produces": [
@@ -56,11 +56,11 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/subscribe": {
+        "/subscribe": {
             "post": {
                 "description": "Subscribes an email to weather updates for a specific city with the given frequency.",
                 "consumes": [
-                    "application/json"
+                    "application/x-www-form-urlencoded"
                 ],
                 "produces": [
                     "text/plain"
@@ -71,20 +71,36 @@ const docTemplate = `{
                 "summary": "Subscribe to weather updates",
                 "parameters": [
                     {
-                        "description": "SubscribeReqBody",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/subscription.SubscribeReqBody"
-                        }
+                        "type": "string",
+                        "description": "Email address to subscribe",
+                        "name": "email",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "City for weather updates",
+                        "name": "city",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "hourly",
+                            "daily"
+                        ],
+                        "type": "string",
+                        "description": "Frequency of updates (hourly or daily)",
+                        "name": "frequency",
+                        "in": "formData",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "Subscription successful. Confirmation email sent.",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_server_handlers_subscription.Subscription"
                         }
                     },
                     "400": {
@@ -94,7 +110,7 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "Subscription already exists",
+                        "description": "Email already subscribed",
                         "schema": {
                             "type": "string"
                         }
@@ -108,7 +124,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/unsubscribe/{token}": {
+        "/unsubscribe/{token}": {
             "get": {
                 "description": "Unsubscribes an email from weather updates using the token sent in emails.",
                 "produces": [
@@ -149,7 +165,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/weather": {
+        "/weather": {
             "get": {
                 "description": "Returns the current weather forecast for the specified city using WeatherAPI.com.",
                 "consumes": [
@@ -195,26 +211,24 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "subscription.SubscribeReqBody": {
+        "internal_server_handlers_subscription.Subscription": {
             "type": "object",
-            "required": [
-                "city",
-                "email",
-                "frequency"
-            ],
             "properties": {
                 "city": {
+                    "description": "City for weather updates",
                     "type": "string"
                 },
+                "confirmed": {
+                    "description": "Whether the subscription is confirmed",
+                    "type": "boolean"
+                },
                 "email": {
+                    "description": "Email address",
                     "type": "string"
                 },
                 "frequency": {
-                    "type": "string",
-                    "enum": [
-                        "hourly",
-                        "daily"
-                    ]
+                    "description": "Frequency of updates\nEnum: hourly, daily",
+                    "type": "string"
                 }
             }
         },
@@ -222,25 +236,38 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "description": {
+                    "description": "Weather description",
                     "type": "string"
                 },
                 "humidity": {
+                    "description": "Current humidity percentage",
                     "type": "number"
                 },
                 "temperature": {
+                    "description": "Current temperature",
                     "type": "number"
                 }
             }
         }
-    }
+    },
+    "tags": [
+        {
+            "description": "Weather forecast operations",
+            "name": "weather"
+        },
+        {
+            "description": "Subscription management operations",
+            "name": "subscription"
+        }
+    ]
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
+	Version:          "1.0.0",
 	Host:             "",
-	BasePath:         "",
-	Schemes:          []string{},
+	BasePath:         "/api",
+	Schemes:          []string{"http", "https"},
 	Title:            "Weather Forecast API",
 	Description:      "Weather API application that allows users to subscribe to weather updates for their city.",
 	InfoInstanceName: "swagger",

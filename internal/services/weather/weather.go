@@ -1,9 +1,16 @@
 package weather
 
+// swagger:model Weather
 type Weather struct {
+
+	// Current temperature
 	Temperature float64 `json:"temperature"`
-	Humidity    float64 `json:"humidity"`
-	Description string  `json:"description"`
+
+	// Current humidity percentage
+	Humidity float64 `json:"humidity"`
+
+	// Weather description
+	Description string `json:"description"`
 }
 
 type WeatherAPIResponse struct {

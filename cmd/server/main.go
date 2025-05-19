@@ -1,7 +1,14 @@
-// @title           Weather Forecast API
-// @version         1.0
-// @description     Weather API application that allows users to subscribe to weather updates for their city.
+// @title Weather Forecast API
+// @version 1.0.0
+// @description Weather API application that allows users to subscribe to weather updates for their city.
+// @BasePath /api
+// @schemes http https
 
+// @tag.name weather
+// @tag.description Weather forecast operations
+
+// @tag.name subscription
+// @tag.description Subscription management operations
 package main
 
 import (
@@ -46,9 +53,7 @@ func main() {
 	hdlrs := handlers.NewHandlers(cfg, srvc, mdlwrs)
 	hdlrs.RegisterRoutes(srvr.Router)
 
-	logger.Info(ctx, cfg.AppPort)
-
-	// Start weather update scheduler (send e-mail goroutines)
+	// Start weather update scheduler (send emails by goroutines)
 	if err := srvc.Subscription.StartScheduler(ctx); err != nil {
 		logger.Fatal(ctx, fmt.Errorf("failed to start subscription scheduler: %w", err))
 	}
