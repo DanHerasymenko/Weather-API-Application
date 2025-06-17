@@ -1,6 +1,7 @@
-package email
+package client
 
 import (
+	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/logger"
 	"context"
 	"net/smtp"
@@ -13,8 +14,13 @@ type SMTPClient struct {
 	Port     string
 }
 
-func NewSMTPClient(from, password, host, port string) *SMTPClient {
-	return &SMTPClient{From: from, Password: password, Host: host, Port: port}
+func NewEmailClient(cfg *config.Config) *SMTPClient {
+	return &SMTPClient{From: cfg.EmailClientFrom, Password: cfg.EmailClientPassword, Host: cfg.EmailClientHost, Port: cfg.EmailClientPort}
+}
+
+// Client is an interface that defines the methods for sending emails
+type Client interface {
+	SendEmail(ctx context.Context, to, subject, body string) error
 }
 
 // SendEmail sends an email using the SMTP client

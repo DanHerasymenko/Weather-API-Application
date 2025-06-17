@@ -12,9 +12,10 @@
 package main
 
 import (
-	_ "Weather-API-Application/cmd/server/docs"
-	"Weather-API-Application/internal/clients"
+	_ "Weather-API-Application/cmd/api/docs"
+	"Weather-API-Application/internal/client"
 	"Weather-API-Application/internal/config"
+	"Weather-API-Application/internal/infrastructure/database"
 	"Weather-API-Application/internal/logger"
 	"Weather-API-Application/internal/server"
 	"Weather-API-Application/internal/server/handlers"
@@ -34,16 +35,21 @@ func main() {
 	}
 	logger.Info(ctx, "Config loaded")
 
-	// Create clients
-	clnts, err := clients.NewClients(ctx, cfg)
+	// Initialize database
+	db, err := database.NewPostgresDB(ctx, cfg.GetDSN())
 	if err != nil {
-		logger.Fatal(ctx, fmt.Errorf("failed to create clients: %w", err))
+		logger.Fatal(ctx, err)
 	}
+
+	// Initialize Email client
+	emailClient := client.NewEmailClient(cfg)
+
+	// Initialize repositories
 
 	// Create services
 	srvc := services.NewServices(cfg, clnts)
 
-	// Create server
+	// Create api
 	srvr := server.NewServer(cfg)
 
 	// Register middlewares
@@ -58,7 +64,7 @@ func main() {
 		logger.Fatal(ctx, fmt.Errorf("failed to start subscription scheduler: %w", err))
 	}
 
-	// Run server
+	// Run api
 	srvr.Run(ctx)
 
 }

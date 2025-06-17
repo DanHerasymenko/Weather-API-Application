@@ -1,26 +1,213 @@
-package subscription
+package service
 
 import (
-	"Weather-API-Application/internal/clients"
 	"Weather-API-Application/internal/config"
-	"context"
+	"Weather-API-Application/internal/logger"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"net/http"
+	"strings"
 	"sync"
+	"time"
 )
+
+// ValidateCity checks if the provided city is valid by making a request to the WeatherAPI.com service.
+func (s *Service) ValidateCity(city string) (bool, error, int) {
+	if s.cfg.WeatherApiKey == "" {
+		return false, fmt.Errorf("weather API key is missing in config"), http.StatusInternalServerError
+	}
+
+	url := fmt.Sprintf("https://api.weatherapi.com/v1/current.json?key=%s&q=%s&aqi=no", s.cfg.WeatherApiKey, city)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return false, fmt.Errorf("failed to fetch weather data: %w", err), http.StatusBadRequest
+	}
+	defer resp.Body.Close()
+
+	var errResp struct {
+		Error *struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != nil {
+		return false, fmt.Errorf("city not found: %s", errResp.Error.Message), http.StatusBadRequest
+	}
+
+	return true, nil, http.StatusOK
+}
+
+// Scheduler is responsible for spawning and managing weather update routines
+// for all confirmed subscriptions.
+
+type Subscription struct {
+	Email     string
+	City      string
+	Frequency string
+}
+
+// StartScheduler fetches all confirmed subscriptions from the database
+// and starts a background goroutine for each one to send periodic weather updates.
+func (s *Service) StartScheduler(ctx context.Context) error {
+
+	subs, err := s.fetchConfirmedSubscriptions(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to fetch confirmed subscriptions: %w", err)
+	}
+
+	for _, sub := range subs {
+
+		// For each subscription, create a new own context with a cancel function
+		subCtx, cancel := context.WithCancel(ctx)
+		key := s.MakeKey(sub)
+
+		s.mu.Lock()
+		s.routines[key] = cancel
+		s.mu.Unlock()
+
+		// Start the routine for this particular subscription
+		go s.startRoutine(subCtx, sub)
+	}
+
+	logger.Info(ctx, fmt.Sprintf("Starting %d subscription routines", len(subs)))
+
+	return nil
+}
+
+// fetchConfirmedSubscriptions retrieves all confirmed email-city-frequency subscriptions
+// from the database to be used for scheduling update routines.
+func (s *Service) fetchConfirmedSubscriptions(ctx context.Context) ([]Subscription, error) {
+
+	rows, err := s.clnts.PostgresClnt.Postgres.Query(ctx, "SELECT email, city, frequency FROM weather_subscriptions WHERE confirmed = true")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var subs []Subscription
+	for rows.Next() {
+		// Scan the row into a Subscription struct
+		var sub Subscription
+		if err := rows.Scan(&sub.Email, &sub.City, &sub.Frequency); err != nil {
+			return nil, err
+		}
+		subs = append(subs, sub)
+	}
+	return subs, nil
+}
+
+// startRoutine runs a background loop for a single subscription.
+// It determines whether the updates should be sent hourly or daily,
+// waits for the correct interval, then periodically calls sendUpdate.
+// The routine stops when the provided context is cancelled.
+func (s *Service) startRoutine(ctx context.Context, sub Subscription) {
+
+	// Detect the interval based on the subscription frequency
+	interval := time.Hour
+	if strings.ToLower(sub.Frequency) == "daily" {
+		interval = 24 * time.Hour
+
+		// Calculate how long to wait until the next daily update
+		now := time.Now()
+		next := time.Date(
+			now.Year(), now.Month(), now.Day(),
+			s.cfg.DailyStartHour, 0, 0, 0,
+			now.Location(),
+		)
+
+		// If current time is after the next scheduled time, add 24 hours
+		if now.After(next) {
+			next = next.Add(24 * time.Hour)
+		}
+
+		// Wait until the next scheduled time
+		select {
+		case <-time.After(time.Until(next)):
+			// continue to the loop with proper start time
+		case <-ctx.Done():
+			logger.Info(ctx, fmt.Sprintf("Routine cancelled before first run: %s - %s", sub.Email, sub.City))
+			return
+		}
+	} else {
+		interval = time.Hour
+	}
+
+	// Create a ticker to send updates with the specified interval
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Info(ctx, fmt.Sprintf("Stopping routine for %s - %s", sub.Email, sub.City))
+			return
+
+		case <-ticker.C:
+
+			logger.Info(ctx, fmt.Sprintf("Attempting to send update to %s for %s", sub.Email, sub.City))
+			if err := s.sendUpdate(ctx, sub); err != nil {
+				logger.Error(ctx, err)
+			}
+			logger.Info(ctx, fmt.Sprintf("Weather update sent to %s for city %s", sub.Email, sub.City))
+		}
+	}
+}
+
+// sendUpdate fetches the current weather data for the given subscription's city,
+// formats it into a plain text message, and sends it via email to the subscriber.
+// Returns an error if any of the steps fail (HTTP request, JSON parsing, or email sending).
+func (s *Service) sendUpdate(ctx context.Context, sub Subscription) error {
+
+	// Fetch the weather data for the city
+	if s.cfg.WeatherApiKey == "" {
+		return fmt.Errorf("weather API key is missing in config")
+	}
+
+	url := fmt.Sprintf("https://api.weatherapi.com/v1/current.json?key=%s&q=%s&aqi=no", s.cfg.WeatherApiKey, sub.City)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Errorf("invalid request: failed to fetch weather data: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("city not found: failed to fetch weather data: %s", resp.Status)
+	}
+
+	var weatherApiResp weather.WeatherAPIResponse
+	if err = json.NewDecoder(resp.Body).Decode(&weatherApiResp); err != nil {
+		return fmt.Errorf("failed to decode weather data: %w", err)
+	}
+
+	// Prepare the email content
+	weatherMailText := fmt.Sprintf(`Weather for %s:<br>- temperature: %.1f°C<br>- humidity: %.0f%%<br>- description: %s`,
+		sub.City, weatherApiResp.Current.TempC, weatherApiResp.Current.Humidity, weatherApiResp.Current.Condition.Text)
+	subject := fmt.Sprintf("%s forecast", sub.City)
+
+	// Send the email
+	if err := s.clnts.EmailClnt.SendEmail(ctx, sub.Email, subject, weatherMailText); err != nil {
+		return fmt.Errorf("failed to send email to %s for city %s: %w", sub.Email, sub.City, err)
+	}
+
+	return nil
+}
+
+func (s *Service) MakeKey(sub Subscription) string {
+	return fmt.Sprintf("%s|%s", sub.Email, strings.ToLower(sub.City))
+}
 
 type Service struct {
 	cfg   *config.Config
-	clnts *clients.Clients
+	clnts *client.Clients
 
 	routines map[string]context.CancelFunc
 	mu       sync.Mutex
 }
 
-func NewService(cfg *config.Config, clnts *clients.Clients) *Service {
+func NewService(cfg *config.Config, clnts *client.Clients) *Service {
 	return &Service{
 		cfg:      cfg,
 		clnts:    clnts,

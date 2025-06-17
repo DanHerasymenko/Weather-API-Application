@@ -1,7 +1,6 @@
-package weather
+package handler
 
 import (
-	"Weather-API-Application/internal/services"
 	"Weather-API-Application/internal/utils/response"
 	"github.com/gin-gonic/gin"
 )

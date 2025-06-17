@@ -1,9 +1,8 @@
-package subscription
+package handler
 
 import (
 	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/logger"
-	"Weather-API-Application/internal/services"
 	"Weather-API-Application/internal/utils/response"
 	"Weather-API-Application/internal/utils/validate"
 	"fmt"
@@ -50,7 +49,7 @@ type Subscription struct {
 // @Success 200 {object} Subscription "Subscription successful. Confirmation email sent."
 // @Failure      400 {string} string "Invalid input"
 // @Failure      409 {string} string "Email already subscribed"
-// @Failure      500 {string} string "Internal server error"
+// @Failure      500 {string} string "Internal api error"
 // @Router       /subscribe [post]
 func (h *Handler) Subscribe(ctx *gin.Context) {
 
@@ -140,7 +139,7 @@ func (h *Handler) ConfirmSubscription(ctx *gin.Context) {
 func (h *Handler) Unsubscribe(ctx *gin.Context) {
 
 	token := ctx.Param("token")
-	code, err := h.srvc.Subscription.Unsubscribe(ctx, token)
+	code, err := h.srvc.Subscription.Unsubs	cribe(ctx, token)
 	if err != nil {
 		response.AbortWithError(ctx, code, err)
 		return
@@ -148,3 +147,4 @@ func (h *Handler) Unsubscribe(ctx *gin.Context) {
 
 	ctx.String(200, "Unsubscribed successfully")
 }
+

@@ -16,14 +16,13 @@ type Config struct {
 	PostgresUser          string `env:"POSTGRES_USER"`
 	PostgresPassword      string `env:"POSTGRES_PASSWORD"`
 	PostgresDB            string `env:"POSTGRES_DB"`
-	RunMigrations         bool   `env:"RUN_MIGRATIONS" envDefault:"false"`
 
 	WeatherApiKey string `env:"WEATHER_API_KEY"`
 
-	From     string `env:"SMTP_FROM"`
-	Password string `env:"SMTP_PASSWORD"`
-	Host     string `env:"SMTP_HOST"`
-	Port     string `env:"SMTP_PORT"`
+	EmailClientFrom     string `env:"SMTP_FROM"`
+	EmailClientPassword string `env:"SMTP_PASSWORD"`
+	EmailClientHost     string `env:"SMTP_HOST"`
+	EmailClientPort     string `env:"SMTP_PORT"`
 }
 
 // NewConfigFromEnv creates a new Config instance and populates it with values from environment variables.
@@ -34,4 +33,15 @@ func NewConfigFromEnv() (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config from env: %w", err)
 	}
 	return cfg, nil
+}
+
+func (cfg *Config) GetDSN() string {
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s?sslmode=disable",
+		cfg.PostgresUser,
+		cfg.PostgresPassword,
+		cfg.PostgresContainerHost,
+		cfg.PostgresContainerPort,
+		cfg.PostgresDB,
+	)
 }

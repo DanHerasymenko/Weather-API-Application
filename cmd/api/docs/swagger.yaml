@@ -105,7 +105,7 @@ paths:
           schema:
             type: string
         "500":
-          description: Internal server error
+          description: Internal api error
           schema:
             type: string
       summary: Subscribe to weather updates
