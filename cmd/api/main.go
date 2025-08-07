@@ -16,6 +16,7 @@ import (
 	"Weather-API-Application/internal/client"
 	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/infrastructure/database"
+	"Weather-API-Application/internal/infrastructure/repository"
 	"Weather-API-Application/internal/logger"
 	"Weather-API-Application/internal/server"
 	"Weather-API-Application/internal/server/handlers"
@@ -45,6 +46,7 @@ func main() {
 	emailClient := client.NewEmailClient(cfg)
 
 	// Initialize repositories
+	subscriptionRepository := repository.NewSubscriptionRepository(db)
 
 	// Create services
 	srvc := services.NewServices(cfg, clnts)

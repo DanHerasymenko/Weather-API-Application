@@ -1,35 +1,23 @@
 package database
 
 import (
-	"Weather-API-Application/internal/logger"
-	"context"
+	"database/sql"
 	"fmt"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PostgresDB struct {
-	Postgres *pgxpool.Pool
+	DB *sql.DB
 }
 
-// NewPostgresClient creates a new Postgres client
-func NewPostgresDB(ctx context.Context, dsn string) (*PostgresDB, error) {
-	poolConfig, err := pgxpool.ParseConfig(dsn)
+func NewPostgresDB(dsn string) (*PostgresDB, error) {
+	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err)
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pool: %w", err)
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	// check connection
-	if err := pool.Ping(ctx); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("failed to ping pool: %w", err)
-	}
-
-	logger.Info(ctx, "Postgres ping successful")
-
-	return &PostgresDB{Postgres: pool}, nil
+	return &PostgresDB{DB: db}, nil
 }

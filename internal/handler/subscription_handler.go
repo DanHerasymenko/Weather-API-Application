@@ -2,39 +2,33 @@ package handler
 
 import (
 	"Weather-API-Application/internal/config"
-	"Weather-API-Application/internal/logger"
+	"Weather-API-Application/internal/model"
+	"Weather-API-Application/internal/services"
 	"Weather-API-Application/internal/utils/response"
-	"Weather-API-Application/internal/utils/validate"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
-type Handler struct {
-	cfg  *config.Config
-	srvc *services.Services
+type SubscriptionHandler struct {
+	config  *config.Config
+	service *services.SubscriptionService
 }
 
-func NewHandler(cfg *config.Config, srvc *services.Services) *Handler {
-	return &Handler{
-		cfg:  cfg,
-		srvc: srvc,
+func NewSubscriptionHandler(cfg *config.Config, srvc *services.SubscriptionService) *SubscriptionHandler {
+	return &SubscriptionHandler{
+		config:  cfg,
+		service: srvc,
 	}
 }
 
-// swagger:model Subscription
-type Subscription struct {
-	// Email address
-	Email string `json:"email"`
-
-	// City for weather updates
-	City string `json:"city"`
-
-	// Frequency of updates
-	// Enum: hourly, daily
-	Frequency string `json:"frequency"`
-
-	// Whether the subscription is confirmed
-	Confirmed bool `json:"confirmed"`
+func (h *SubscriptionHandler) RegisterRoutes(router *gin.Engine) {
+	subscription := router.Group("/api/subscription")
+	{
+		subscription.POST("/subscribe", h.Subscribe)
+		subscription.GET("/confirm/:token", h.ConfirmSubscription)
+		subscription.GET("/unsubscribe/:token", h.Unsubscribe)
+	}
 }
 
 // Subscribe godoc
@@ -51,52 +45,26 @@ type Subscription struct {
 // @Failure      409 {string} string "Email already subscribed"
 // @Failure      500 {string} string "Internal api error"
 // @Router       /subscribe [post]
-func (h *Handler) Subscribe(ctx *gin.Context) {
+func (h *SubscriptionHandler) Subscribe(ctx *gin.Context) {
 
-	email := ctx.PostForm("email")
-	city := ctx.PostForm("city")
-	frequency := ctx.PostForm("frequency")
-
-	if email == "" || city == "" {
-		response.AbortWithErrorJSON(ctx, 400, fmt.Errorf("missing fields"), "Email and city are required")
-		return
-	}
-	if frequency != "hourly" && frequency != "daily" {
-		response.AbortWithErrorJSON(ctx, 400, fmt.Errorf("invalid frequency"), "Frequency must be 'hourly' or 'daily'")
-		return
-	}
-	if !validate.IsValidEmail(email) {
-		response.AbortWithErrorJSON(ctx, 400, fmt.Errorf("invalid email"), "Email format is invalid")
+	// 1. Використовуємо модель для автоматичного парсингу JSON
+	var req model.SubscriptionCreate
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
 		return
 	}
 
-	reqBody := Subscription{
-		Email:     email,
-		City:      city,
-		Frequency: frequency,
-	}
-	logger.Info(ctx, fmt.Sprintf("VALIDATE INPUT: email=%s | city=%s | frequency=%s", email, city, frequency))
-
-	// check if the city input from User is valid via WeatherAPI
-	ok, err, code := h.srvc.Subscription.ValidateCity(reqBody.City)
-	logger.Info(ctx, fmt.Sprintf("VALIDATE CITY: %s | ok=%v | err=%v | code=%d", city, ok, err, code))
-
-	if err != nil {
-		response.AbortWithError(ctx, code, err)
-		return
-	}
-	if !ok {
-		response.AbortWithError(ctx, code, fmt.Errorf("city not found"))
+	// 2. Уся логіка, включно з валідацією, тепер у сервісі.
+	// Обробник просто передає дані.
+	if err := h.service.Subscribe(ctx, &req); err != nil {
+		// Сервіс повинен повертати помилки, які можна перетворити на HTTP статус.
+		// Для простоти, ми повертаємо 500, але можна додати логіку для різних кодів помилок.
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	code, err = h.srvc.Subscription.Subscribe(ctx, reqBody.Email, reqBody.City, reqBody.Frequency)
-	if err != nil {
-		response.AbortWithError(ctx, code, err)
-		return
-	}
-
-	ctx.String(200, "Subscription successful. Confirmation email sent.")
+	// 3. Використовуємо стандартну відповідь Gin
+	ctx.String(http.StatusOK, "Subscription successful. Confirmation email sent.")
 }
 
 // ConfirmSubscription godoc
@@ -109,7 +77,7 @@ func (h *Handler) Subscribe(ctx *gin.Context) {
 // @Failure      400    {string}  string  "Invalid token"
 // @Failure      404    {string}  string  "Token not found"
 // @Router       /confirm/{token} [get]
-func (h *Handler) ConfirmSubscription(ctx *gin.Context) {
+func (h *SubscriptionHandler) ConfirmSubscription(ctx *gin.Context) {
 
 	token := ctx.Param("token")
 	if token == "" {
@@ -136,7 +104,7 @@ func (h *Handler) ConfirmSubscription(ctx *gin.Context) {
 // @Failure      400    {string}  string  "Invalid token"
 // @Failure      404    {string}  string  "Token not found"
 // @Router       /unsubscribe/{token} [get]
-func (h *Handler) Unsubscribe(ctx *gin.Context) {
+func (h *SubscriptionHandler) Unsubscribe(ctx *gin.Context) {
 
 	token := ctx.Param("token")
 	code, err := h.srvc.Subscription.Unsubs	cribe(ctx, token)

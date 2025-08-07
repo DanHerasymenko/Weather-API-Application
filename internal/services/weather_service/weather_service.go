@@ -1,4 +1,4 @@
-package service
+package weather_service
 
 import (
 "Weather-API-Application/internal/config"
@@ -18,7 +18,7 @@ func NewService(cfg *config.Config) *Service {
 }
 
 // FetchWeatherForCity retrieves the current weather data for the given city
-// using the external WeatherAPI.com service.
+// using the external WeatherAPI.com services.
 //
 // It performs the following steps:
 //   - Validates that the API key is present in the config.
