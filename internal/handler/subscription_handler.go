@@ -3,19 +3,20 @@ package handler
 import (
 	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/model"
-	"Weather-API-Application/internal/services"
+	"Weather-API-Application/internal/services/subscription_service"
 	"Weather-API-Application/internal/utils/response"
-	"fmt"
+	"errors"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 )
 
 type SubscriptionHandler struct {
 	config  *config.Config
-	service *services.SubscriptionService
+	service *subscription_service.SubscriptionService
 }
 
-func NewSubscriptionHandler(cfg *config.Config, srvc *services.SubscriptionService) *SubscriptionHandler {
+func NewSubscriptionHandler(cfg *config.Config, srvc *subscription_service.SubscriptionService) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		config:  cfg,
 		service: srvc,
@@ -46,25 +47,19 @@ func (h *SubscriptionHandler) RegisterRoutes(router *gin.Engine) {
 // @Failure      500 {string} string "Internal api error"
 // @Router       /subscribe [post]
 func (h *SubscriptionHandler) Subscribe(ctx *gin.Context) {
-
-	// 1. Використовуємо модель для автоматичного парсингу JSON
 	var req model.SubscriptionCreate
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
-		return
-	}
 
-	// 2. Уся логіка, включно з валідацією, тепер у сервісі.
-	// Обробник просто передає дані.
 	if err := h.service.Subscribe(ctx, &req); err != nil {
-		// Сервіс повинен повертати помилки, які можна перетворити на HTTP статус.
-		// Для простоти, ми повертаємо 500, але можна додати логіку для різних кодів помилок.
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		switch {
+		case errors.Is(err, subscription_service.ErrSubscriptionExists):
+			ctx.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		default:
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		}
 		return
 	}
 
-	// 3. Використовуємо стандартну відповідь Gin
-	ctx.String(http.StatusOK, "Subscription successful. Confirmation email sent.")
+	ctx.JSON(http.StatusOK, gin.H{"message": "Confirmation email sent."})
 }
 
 // ConfirmSubscription godoc
@@ -77,21 +72,22 @@ func (h *SubscriptionHandler) Subscribe(ctx *gin.Context) {
 // @Failure      400    {string}  string  "Invalid token"
 // @Failure      404    {string}  string  "Token not found"
 // @Router       /confirm/{token} [get]
-func (h *SubscriptionHandler) ConfirmSubscription(ctx *gin.Context) {
+func (h *SubscriptionHandler) ConfirmSubscription(c *gin.Context) {
+	token := c.Param("token")
 
-	token := ctx.Param("token")
-	if token == "" {
-		response.AbortWithError(ctx, 400, fmt.Errorf("token is required"))
+	if err := h.service.ConfirmSubscription(c.Request.Context(), token); err != nil {
+		switch {
+		case errors.Is(err, service.ErrNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case errors.Is(err, service.ErrAlreadyConfirmed):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		}
 		return
 	}
 
-	code, err := h.srvc.Subscription.ConfirmSubscription(ctx, token)
-	if err != nil {
-		response.AbortWithError(ctx, code, err)
-		return
-	}
-
-	ctx.String(200, "Subscription confirmed")
+	c.JSON(http.StatusOK, gin.H{"message": "Subscription confirmed."})
 }
 
 // Unsubscribe godoc
