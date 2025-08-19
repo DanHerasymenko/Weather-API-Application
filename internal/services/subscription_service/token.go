@@ -5,7 +5,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func createNewToken() string {
+func CreateNewToken() string {
 	return uuid.New().String()
 }
 

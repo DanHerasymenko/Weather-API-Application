@@ -47,7 +47,7 @@ func (h *SubscriptionHandler) RegisterRoutes(router *gin.Engine) {
 // @Failure      500 {string} string "Internal api error"
 // @Router       /subscribe [post]
 func (h *SubscriptionHandler) Subscribe(ctx *gin.Context) {
-	var req model.SubscriptionCreate
+	var req model.Subscription
 
 	if err := h.service.Subscribe(ctx, &req); err != nil {
 		switch {

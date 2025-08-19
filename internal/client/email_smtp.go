@@ -7,15 +7,15 @@ import (
 	"net/smtp"
 )
 
-type SMTPClient struct {
+type EmailClient struct {
 	From     string
 	Password string
 	Host     string
 	Port     string
 }
 
-func NewEmailClient(cfg *config.Config) *SMTPClient {
-	return &SMTPClient{From: cfg.EmailClientFrom, Password: cfg.EmailClientPassword, Host: cfg.EmailClientHost, Port: cfg.EmailClientPort}
+func NewEmailClient(cfg *config.Config) *EmailClient {
+	return &EmailClient{From: cfg.EmailClientFrom, Password: cfg.EmailClientPassword, Host: cfg.EmailClientHost, Port: cfg.EmailClientPort}
 }
 
 // Client is an interface that defines the methods for sending emails
@@ -24,7 +24,7 @@ type Client interface {
 }
 
 // SendEmail sends an email using the SMTP client
-func (c *SMTPClient) SendEmail(ctx context.Context, to, subject, body string) error {
+func (c *EmailClient) SendEmail(ctx context.Context, to, subject, body string) error {
 	msg := []byte("To: " + to + "\r\n" +
 		"Subject: " + subject + "\r\n" +
 		"MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n" +

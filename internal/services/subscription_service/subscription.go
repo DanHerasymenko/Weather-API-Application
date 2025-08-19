@@ -1,8 +1,8 @@
 package subscription_service
 
 import (
-	"Weather-API-Application/internal/clients" // Припускаємо, що email-клієнт тут
-	"Weather-API-Application/internal/config"  // Залишаємо для конфігурації email
+	"Weather-API-Application/internal/client"
+	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/model"
 	"Weather-API-Application/internal/repository"
 	"context"
@@ -19,7 +19,7 @@ var (
 
 type SubscriptionService struct {
 	repo        repository.SubscriptionRepository
-	emailClient clients.EmailClient
+	emailClient client.EmailClient
 	cfg         *config.Config
 	mu          sync.Mutex
 	routines    map[string]context.CancelFunc
@@ -34,54 +34,61 @@ func NewSubscriptionService(repo repository.SubscriptionRepository, emailClient 
 	}
 }
 
-func (s *SubscriptionService) Subscribe(ctx context.Context, req *model.SubscriptionCreate) error {
-	// 1. Отримуємо підписку з репозиторію
-	sub, err := s.repo.GetByEmailAndCity(ctx, req.Email, req.City)
+func (s *SubscriptionService) Subscribe(ctx context.Context, req *model.Subscription) error {
 
-	// Ситуація: підписка вже існує
-	if err == nil {
-		if sub.Confirmed {
-			// Знайдено і підтверджено -> повертаємо семантичну бізнес-помилку
-			return ErrSubscriptionExists
-		}
-
-		// Знайдено, але не підтверджено -> оновлюємо токен і надсилаємо лист (успішний сценарій)
-		newToken := createNewToken()
-		if err := s.repo.UpdateToken(ctx, sub.ID, newToken); err != nil {
-			// Це внутрішня помилка БД, "загортаємо" її для контексту
-			return fmt.Errorf("failed to update subscription: %w", err)
-		}
-
-		// Надсилаємо лист
-		if err := s.emailClient.SendEmail(ctx, sub.Email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, newToken)); err != nil {
-			return fmt.Errorf("failed to send confirmation email: %w", err)
-		}
-		return nil // Успіх
+	rowExists, confirmed, err := s.repo.CheckConfirmation(ctx, req)
+	if err != nil {
+		return fmt.Errorf("check confirmation: %w", err)
 	}
 
-	// Ситуація: підписка не знайдена, створюємо нову
-	if errors.Is(err, repository.ErrNotFound) { // Припускаємо, що репозиторій повертає свою помилку ErrNotFound
-		newToken := createNewToken()
-		newSub := &model.Subscription{
+	// 1) Нема підписки -> створюємо і відправляємо лист
+	if !rowExists {
+
+		token := CreateNewToken()
+		sub := &model.Subscription{
 			Email:     req.Email,
 			City:      req.City,
 			Frequency: req.Frequency,
-			Token:     newToken,
+			Token:     token,
 			Confirmed: false,
 		}
 
-		if err := s.repo.Create(ctx, newSub); err != nil {
+		if err := s.repo.Create(ctx, sub); err != nil {
+			// якщо БД з унікальним індексом (email, city) поверне дуплікат — перехопи і оброби як “вже існує”
+			if errors.Is(err, repository.ErrDuplicate) {
+				// опційно: можна одразу перейти до гілки «вже існує» і перевірити confirmed повторно
+				return ErrSubscriptionExists
+			}
 			return fmt.Errorf("failed to create subscription: %w", err)
 		}
 
-		if err := s.emailClient.SendEmail(ctx, newSub.Email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, newToken)); err != nil {
+		if err := s.emailClient.SendEmail(
+			ctx, sub.Email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, token),
+		); err != nil {
 			return fmt.Errorf("failed to send confirmation email: %w", err)
 		}
-		return nil // Успіх
+		return nil
 	}
 
-	// Будь-яка інша помилка з репозиторію є неочікуваною
-	return fmt.Errorf("failed to check for subscription: %w", err)
+	// 2) Є, але не підтверджена -> оновлюємо токен і шлемо лист
+	if !confirmed {
+		token := createNewToken()
+
+		// Якщо в тебе немає ID, зроби метод, який оновлює токен по (email, city)
+		if err := s.repo.UpdateTokenByEmailCity(ctx, req.Email, req.City, token); err != nil {
+			return fmt.Errorf("failed to update subscription token: %w", err)
+		}
+
+		if err := s.emailClient.SendEmail(
+			ctx, req.Email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, token),
+		); err != nil {
+			return fmt.Errorf("failed to send confirmation email: %w", err)
+		}
+		return nil
+	}
+
+	// 3) Є і підтверджена -> бізнес-правило: вважаємо помилкою
+	return ErrSubscriptionExists
 }
 
 func (s *SubscriptionService) ConfirmSubscription(ctx context.Context, token string) error {
@@ -154,10 +161,5 @@ func (s *SubscriptionService) startRoutine(ctx context.Context, sub *model.Subsc
 
 func (s *SubscriptionService) MakeKey(sub *model.Subscription) string {
 	// ... ваша логіка створення ключа
-	return ""
-}
-
-func createNewToken() string {
-	// ... ваша логіка створення токена
 	return ""
 }

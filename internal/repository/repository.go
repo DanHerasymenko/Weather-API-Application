@@ -9,6 +9,7 @@ type WeatherRepository interface {
 }
 
 type SubscriptionRepository interface {
-	Subscribe(ctx context.Context, subscriptionRequest *model.SubscriptionCreate)
-	CheckConfirmation(ctx context.Context, subscriptionRequest *model.SubscriptionCreate) (bool, error)
+	Subscribe(ctx context.Context, subscriptionRequest *model.Subscription)
+	CheckConfirmation(ctx context.Context, subscriptionRequest *model.Subscription) (rowExists bool, confirmed bool, err error)
+	Create(ctx context.Context, subscriptionRequest *model.Subscription) error
 }
