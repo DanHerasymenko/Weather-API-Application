@@ -11,12 +11,6 @@ import (
 	"sync"
 )
 
-var (
-	ErrSubscriptionExists = errors.New("subscription already exists")
-	ErrNotFound           = errors.New("subscription not found")
-	ErrAlreadyConfirmed   = errors.New("subscription already confirmed")
-)
-
 type SubscriptionService struct {
 	repo        repository.SubscriptionRepository
 	emailClient client.EmailClient
@@ -25,7 +19,7 @@ type SubscriptionService struct {
 	routines    map[string]context.CancelFunc
 }
 
-func NewSubscriptionService(repo repository.SubscriptionRepository, emailClient clients.EmailClient, cfg *config.Config) *SubscriptionService {
+func NewSubscriptionService(repo repository.SubscriptionRepository, emailClient client.EmailClient, cfg *config.Config) *SubscriptionService {
 	return &SubscriptionService{
 		repo:        repo,
 		emailClient: emailClient,
@@ -53,35 +47,31 @@ func (s *SubscriptionService) Subscribe(ctx context.Context, req *model.Subscrip
 			Confirmed: false,
 		}
 
-		if err := s.repo.Create(ctx, sub); err != nil {
-			// якщо БД з унікальним індексом (email, city) поверне дуплікат — перехопи і оброби як “вже існує”
-			if errors.Is(err, repository.ErrDuplicate) {
-				// опційно: можна одразу перейти до гілки «вже існує» і перевірити confirmed повторно
-				return ErrSubscriptionExists
-			}
-			return fmt.Errorf("failed to create subscription: %w", err)
+		err := s.repo.Create(ctx, sub)
+		if err != nil {
+			return ErrFailedToCreateSubscription
 		}
 
-		if err := s.emailClient.SendEmail(
-			ctx, sub.Email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, token),
-		); err != nil {
+		err = s.emailClient.SendEmail(ctx, sub.Email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, token))
+		if err != nil {
 			return fmt.Errorf("failed to send confirmation email: %w", err)
 		}
+
 		return nil
 	}
 
 	// 2) Є, але не підтверджена -> оновлюємо токен і шлемо лист
 	if !confirmed {
-		token := createNewToken()
+		token := CreateNewToken()
 
 		// Якщо в тебе немає ID, зроби метод, який оновлює токен по (email, city)
-		if err := s.repo.UpdateTokenByEmailCity(ctx, req.Email, req.City, token); err != nil {
+		err := s.repo.UpdateTokenByEmailCity(ctx, req)
+		if err != nil {
 			return fmt.Errorf("failed to update subscription token: %w", err)
 		}
 
-		if err := s.emailClient.SendEmail(
-			ctx, req.Email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, token),
-		); err != nil {
+		err = s.emailClient.SendEmail(ctx, req.Email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, token))
+		if err != nil {
 			return fmt.Errorf("failed to send confirmation email: %w", err)
 		}
 		return nil

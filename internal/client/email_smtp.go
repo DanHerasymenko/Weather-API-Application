@@ -32,7 +32,6 @@ func (c *EmailClient) SendEmail(ctx context.Context, to, subject, body string) e
 
 	auth := smtp.PlainAuth("", c.From, c.Password, c.Host)
 
-	// Send the email
 	err := smtp.SendMail(c.Host+":"+c.Port, auth, c.From, []string{to}, msg)
 	if err != nil {
 		return err

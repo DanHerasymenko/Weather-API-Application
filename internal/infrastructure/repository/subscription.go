@@ -6,11 +6,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 )
 
 type SubscriptionRepository struct {
 	db *sql.DB
 }
+
+
 
 func NewSubscriptionRepository(db *sql.DB) repository.SubscriptionRepository {
 	return &SubscriptionRepository{db: db}
@@ -41,6 +44,32 @@ func (r *SubscriptionRepository) CheckConfirmation(ctx context.Context, subscrip
 
 func (r *SubscriptionRepository) Create(ctx context.Context, subscriptionRequest *model.Subscription) error {
 
-	//TODO implement me
-	panic("implement me")
+	query := `INSERT INTO weather_subscriptions (email, city, token, frequency, created_at) VALUES ($1, $2, $3, $4, now())`
+
+	return r.db.QueryRowContext(
+		ctx, query,
+		subscriptionRequest.Email,
+		subscriptionRequest.City,
+		subscriptionRequest.Token,
+		subscriptionRequest.Frequency,
+	)
 }
+
+
+
+func (r *SubscriptionRepository) UpdateTokenByEmailCity(ctx context.Context, subscriptionRequest *model.Subscription) error {
+
+	query := `UPDATE weather_subscriptions SET token = $1, created_at = now() WHERE email = $2 AND city = $3`
+
+	r.db.QueryContext(ctx, query, subscriptionRequest.Token, subscriptionRequest.Email, subscriptionRequest.City)
+
+
+
+	_, err := s.clnts.PostgresClnt.Postgres.Exec(ctx, , token, email, city)
+	if err != nil {
+		return fmt.Errorf("failed to update subscription: %w", err)
+	}
+
+	return nil
+}
+
