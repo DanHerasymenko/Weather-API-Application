@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"strings"
 	"sync"
 )
@@ -39,7 +40,7 @@ func (s *SubscriptionService) Subscribe(ctx context.Context, req *model.Subscrip
 	// 1) Нема підписки -> створюємо і відправляємо лист
 	if !rowExists {
 
-		token := CreateNewToken()
+		token := createNewToken()
 		sub := &model.Subscription{
 			Email:     req.Email,
 			City:      req.City,
@@ -63,7 +64,7 @@ func (s *SubscriptionService) Subscribe(ctx context.Context, req *model.Subscrip
 
 	// 2) Є, але не підтверджена -> оновлюємо токен і шлемо лист
 	if !confirmed {
-		token := CreateNewToken()
+		token := createNewToken()
 
 		// Якщо в тебе немає ID, зроби метод, який оновлює токен по (email, city)
 		err := s.repo.UpdateTokenByEmailCity(ctx, req)
@@ -146,4 +147,8 @@ func (s *SubscriptionService) startRoutine(ctx context.Context, sub *model.Subsc
 
 func (s *SubscriptionService) makeKey(sub *model.Subscription) string {
 	return fmt.Sprintf("%s|%s", sub.Email, strings.ToLower(sub.City))
+}
+
+func createNewToken() string {
+	return uuid.New().String()
 }
