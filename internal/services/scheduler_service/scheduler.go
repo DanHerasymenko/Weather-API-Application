@@ -43,7 +43,7 @@ func (s *Service) StartScheduler(ctx context.Context) error {
 // It determines whether the updates should be sent hourly or daily,
 // waits for the correct interval, then periodically calls sendUpdate.
 // The routine stops when the provided context is cancelled.
-func (s *Service) startRoutine(ctx context.Context, sub Subscription) {
+func (s *Service) StartRoutine(ctx context.Context, sub Subscription) {
 
 	// Detect the interval based on the subscription frequency
 	interval := time.Hour

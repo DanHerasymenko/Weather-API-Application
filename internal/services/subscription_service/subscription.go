@@ -5,6 +5,7 @@ import (
 	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/model"
 	"Weather-API-Application/internal/repository"
+	"Weather-API-Application/internal/services/scheduler_service"
 	"context"
 	"errors"
 	"fmt"
@@ -104,7 +105,7 @@ func (s *SubscriptionService) ConfirmSubscription(ctx context.Context, token str
 
 	// TODO: refactor
 	// Запускаємо фонову задачу
-	go s.startRoutine(ctx, sub)
+	go scheduler_service.StartRoutine(ctx, sub)
 
 	return nil // Успіх
 }
