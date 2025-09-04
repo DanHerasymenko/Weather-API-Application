@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -82,10 +83,10 @@ func (s *SubscriptionService) Subscribe(ctx context.Context, req *model.Subscrip
 }
 
 func (s *SubscriptionService) ConfirmSubscription(ctx context.Context, token string) error {
-	sub, err := s.repo.GetByToken(ctx, token)
+
+	subId, sub, err := s.repo.GetByToken(ctx, token)
 	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			// Транслюємо помилку репозиторію в нашу бізнес-помилку
+		if errors.Is(err, ErrNotFound) {
 			return ErrNotFound
 		}
 		return fmt.Errorf("failed to scan subscription: %w", err) // Інша помилка БД
@@ -95,11 +96,12 @@ func (s *SubscriptionService) ConfirmSubscription(ctx context.Context, token str
 		return ErrAlreadyConfirmed
 	}
 
-	// Позначаємо підписку як підтверджену через репозиторій
-	if err := s.repo.SetConfirmed(ctx, sub.ID); err != nil {
+	err = s.repo.SetConfirmed(ctx, subId)
+	if err != nil {
 		return fmt.Errorf("failed to update subscription: %w", err)
 	}
 
+	// TODO: refactor
 	// Запускаємо фонову задачу
 	go s.startRoutine(ctx, sub)
 
@@ -108,21 +110,22 @@ func (s *SubscriptionService) ConfirmSubscription(ctx context.Context, token str
 
 func (s *SubscriptionService) Unsubscribe(ctx context.Context, token string) error {
 	// 1. Отримуємо підписку, щоб знати, яку рутину зупинити
-	sub, err := s.repo.GetByToken(ctx, token)
+	_, sub, err := s.repo.GetByToken(ctx, token)
 	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
+		if errors.Is(err, ErrNotFound) {
 			return ErrNotFound
 		}
-		return fmt.Errorf("failed to fetch subscription: %w", err)
+		return fmt.Errorf("failed to scan subscription: %w", err) // Інша помилка БД
 	}
 
 	// 2. Видаляємо підписку через репозиторій
-	if err := s.repo.DeleteByToken(ctx, token); err != nil {
+	err = s.repo.DeleteByToken(ctx, token)
+	if err != nil {
 		return fmt.Errorf("failed to delete subscription: %w", err)
 	}
 
 	// 3. Зупиняємо рутину
-	key := s.MakeKey(sub)
+	key := s.makeKey(sub)
 	s.mu.Lock()
 	if cancel, ok := s.routines[key]; ok {
 		cancel()
@@ -134,22 +137,13 @@ func (s *SubscriptionService) Unsubscribe(ctx context.Context, token string) err
 }
 
 func (s *SubscriptionService) fetchConfirmedSubscriptions(ctx context.Context) ([]*model.Subscription, error) {
-	// Уся логіка запитів до БД знаходиться в репозиторії
 	return s.repo.ListConfirmed(ctx)
 }
 
-// Цей метод більше не потрібен у сервісі, оскільки його логіка
-// тепер повністю інкапсульована в s.repo.Create()
-/*
-func (s *SubscriptionService) createNewSubscription(...) error { ... }
-*/
-
-// Приватні методи, які є частиною бізнес-логіки (управління рутинами), залишаються тут
 func (s *SubscriptionService) startRoutine(ctx context.Context, sub *model.Subscription) {
-	// ... ваша логіка запуску
+	//TODO: start routines logic
 }
 
-func (s *SubscriptionService) MakeKey(sub *model.Subscription) string {
-	// ... ваша логіка створення ключа
-	return ""
+func (s *SubscriptionService) makeKey(sub *model.Subscription) string {
+	return fmt.Sprintf("%s|%s", sub.Email, strings.ToLower(sub.City))
 }

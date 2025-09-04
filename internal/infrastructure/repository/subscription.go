@@ -6,9 +6,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
-	"github.com/jackc/pgx/v5"
-	"net/http"
 )
 
 type SubscriptionRepository struct {
@@ -63,18 +60,30 @@ func (r *SubscriptionRepository) UpdateTokenByEmailCity(ctx context.Context, sub
 		subscriptionRequest.City)
 }
 
-func (r *SubscriptionRepository) GetByToken(ctx context.Context, token string) (*model.Subscription, error) {
+func (r *SubscriptionRepository) GetByToken(ctx context.Context, token string) (string, *model.Subscription, error) {
 	query := `SELECT email, city, frequency FROM weather_subscriptions WHERE token = $1`
 
 	row := r.db.QueryRowContext(ctx, token)
 	err := row.Scan(&row)
-	if err != nil {
-		return model.Subscription{
-			Email:     row.,
-			City:      "",
-			Frequency: "",
-			Token:     "",
-			Confirmed: false,
-		}
-	}
+	//if err != nil {
+	//	return model.Subscription{
+	//		Email:     row.,
+	//		City:      "",
+	//		Frequency: "",
+	//		Token:     "",
+	//		Confirmed: false,
+	//	}
+	//}
+}
+
+func (r *SubscriptionRepository) SetConfirmed(ctx context.Context, subId string) error {
+	return nil
+}
+
+func (r *SubscriptionRepository) DeleteByToken(ctx context.Context, token string) error {
+	return nil
+}
+
+func (r *SubscriptionRepository) ListConfirmed(ctx context.Context) ([]*model.Subscription, error) {
+	return nil, nil
 }
