@@ -1,21 +1,44 @@
 package scheduler_service
 
 import (
+	"Weather-API-Application/internal/client"
+	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/logger"
+	"Weather-API-Application/internal/model"
+	"Weather-API-Application/internal/repository"
+	"Weather-API-Application/internal/services/email_service"
+	"Weather-API-Application/internal/services/subscription_service"
+	"context"
 	"fmt"
-	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
 // Scheduler is responsible for spawning and managing weather update routines
 // for all confirmed subscriptions.
 
+type SchedulerService struct {
+	repo        repository.SubscriptionRepository
+	emailClient client.EmailClient
+	cfg         *config.Config
+	mu          sync.Mutex
+	routines    map[string]context.CancelFunc
+}
+
+func NewSchedulerService(repo repository.SubscriptionRepository, emailClient client.EmailClient, cfg *config.Config) *SchedulerService {
+	return &SchedulerService{
+		repo:        repo,
+		emailClient: emailClient,
+		cfg:         cfg,
+		routines:    make(map[string]context.CancelFunc),
+	}
+}
+
 // StartScheduler fetches all confirmed subscriptions from the database
 // and starts a background goroutine for each one to send periodic weather updates.
-func (s *Service) StartScheduler(ctx context.Context) error {
-
-	subs, err := s.fetchConfirmedSubscriptions(ctx)
+func (s *SchedulerService) StartScheduler(ctx context.Context) error {
+	subs, err := s.repo.ListConfirmed(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to fetch confirmed subscriptions: %w", err)
 	}
@@ -24,14 +47,14 @@ func (s *Service) StartScheduler(ctx context.Context) error {
 
 		// For each subscription, create a new own context with a cancel function
 		subCtx, cancel := context.WithCancel(ctx)
-		key := s.MakeKey(sub)
+		key := subscription_service.MakeKey(sub)
 
 		s.mu.Lock()
 		s.routines[key] = cancel
 		s.mu.Unlock()
 
 		// Start the routine for this particular subscription
-		go s.startRoutine(subCtx, sub)
+		go s.StartRoutine(subCtx, sub)
 	}
 
 	logger.Info(ctx, fmt.Sprintf("Starting %d subscription routines", len(subs)))
@@ -43,7 +66,7 @@ func (s *Service) StartScheduler(ctx context.Context) error {
 // It determines whether the updates should be sent hourly or daily,
 // waits for the correct interval, then periodically calls sendUpdate.
 // The routine stops when the provided context is cancelled.
-func (s *Service) StartRoutine(ctx context.Context, sub Subscription) {
+func (s *SchedulerService) StartRoutine(ctx context.Context, sub *model.Subscription) {
 
 	// Detect the interval based on the subscription frequency
 	interval := time.Hour
@@ -86,52 +109,11 @@ func (s *Service) StartRoutine(ctx context.Context, sub Subscription) {
 			return
 
 		case <-ticker.C:
-
 			logger.Info(ctx, fmt.Sprintf("Attempting to send update to %s for %s", sub.Email, sub.City))
-			if err := s.sendUpdate(ctx, sub); err != nil {
+			if err := email_service.SendUpdate(ctx, s.cfg.WeatherApiKey, sub, s.emailClient); err != nil {
 				logger.Error(ctx, err)
 			}
 			logger.Info(ctx, fmt.Sprintf("Weather update sent to %s for city %s", sub.Email, sub.City))
 		}
 	}
-}
-
-// sendUpdate fetches the current weather data for the given subscription's city,
-// formats it into a plain text message, and sends it via email to the subscriber.
-// Returns an error if any of the steps fail (HTTP request, JSON parsing, or email sending).
-func (s *Service) sendUpdate(ctx context.Context, sub Subscription) error {
-
-	// Fetch the weather data for the city
-	if s.cfg.WeatherApiKey == "" {
-		return fmt.Errorf("weather API key is missing in config")
-	}
-
-	url := fmt.Sprintf("https://api.weatherapi.com/v1/current.json?key=%s&q=%s&aqi=no", s.cfg.WeatherApiKey, sub.City)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return fmt.Errorf("invalid request: failed to fetch weather data: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("city not found: failed to fetch weather data: %s", resp.Status)
-	}
-
-	var weatherApiResp weather.WeatherAPIResponse
-	if err = json.NewDecoder(resp.Body).Decode(&weatherApiResp); err != nil {
-		return fmt.Errorf("failed to decode weather data: %w", err)
-	}
-
-	// Prepare the email content
-	weatherMailText := fmt.Sprintf(`Weather for %s:<br>- temperature: %.1f°C<br>- humidity: %.0f%%<br>- description: %s`,
-		sub.City, weatherApiResp.Current.TempC, weatherApiResp.Current.Humidity, weatherApiResp.Current.Condition.Text)
-	subject := fmt.Sprintf("%s forecast", sub.City)
-
-	// Send the email
-	if err := s.clnts.EmailClnt.SendEmail(ctx, sub.Email, subject, weatherMailText); err != nil {
-		return fmt.Errorf("failed to send email to %s for city %s: %w", sub.Email, sub.City, err)
-	}
-
-	return nil
 }

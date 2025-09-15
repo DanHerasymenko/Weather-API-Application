@@ -5,7 +5,6 @@ import (
 	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/model"
 	"Weather-API-Application/internal/repository"
-	"Weather-API-Application/internal/services/scheduler_service"
 	"context"
 	"errors"
 	"fmt"
@@ -27,7 +26,6 @@ func NewSubscriptionService(repo repository.SubscriptionRepository, emailClient 
 		repo:        repo,
 		emailClient: emailClient,
 		cfg:         cfg,
-		routines:    make(map[string]context.CancelFunc),
 	}
 }
 
@@ -57,7 +55,7 @@ func (s *SubscriptionService) Subscribe(ctx context.Context, req *model.Subscrip
 
 		err = s.emailClient.SendEmail(ctx, sub.Email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, token))
 		if err != nil {
-			return fmt.Errorf("failed to send confirmation email: %w", err)
+			return fmt.Errorf("failed to send confirmation email_service: %w", err)
 		}
 
 		return nil
@@ -67,7 +65,7 @@ func (s *SubscriptionService) Subscribe(ctx context.Context, req *model.Subscrip
 	if !confirmed {
 		token := createNewToken()
 
-		// Якщо в тебе немає ID, зроби метод, який оновлює токен по (email, city)
+		// Якщо в тебе немає ID, зроби метод, який оновлює токен по (email_service, city)
 		err := s.repo.UpdateTokenByEmailCity(ctx, req)
 		if err != nil {
 			return fmt.Errorf("failed to update subscription token: %w", err)
@@ -75,7 +73,7 @@ func (s *SubscriptionService) Subscribe(ctx context.Context, req *model.Subscrip
 
 		err = s.emailClient.SendEmail(ctx, req.Email, config.ConfirmSubject, config.BuildConfirmBody(s.cfg.BaseURL, token))
 		if err != nil {
-			return fmt.Errorf("failed to send confirmation email: %w", err)
+			return fmt.Errorf("failed to send confirmation email_service: %w", err)
 		}
 		return nil
 	}
@@ -84,30 +82,26 @@ func (s *SubscriptionService) Subscribe(ctx context.Context, req *model.Subscrip
 	return ErrSubscriptionExists
 }
 
-func (s *SubscriptionService) ConfirmSubscription(ctx context.Context, token string) error {
+func (s *SubscriptionService) ConfirmSubscription(ctx context.Context, token string) (*model.Subscription, error) {
 
 	subId, sub, err := s.repo.GetByToken(ctx, token)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			return ErrNotFound
+			return nil, ErrNotFound
 		}
-		return fmt.Errorf("failed to scan subscription: %w", err) // Інша помилка БД
+		return nil, fmt.Errorf("failed to scan subscription: %w", err) // Інша помилка БД
 	}
 
 	if sub.Confirmed {
-		return ErrAlreadyConfirmed
+		return nil, ErrAlreadyConfirmed
 	}
 
 	err = s.repo.SetConfirmed(ctx, subId)
 	if err != nil {
-		return fmt.Errorf("failed to update subscription: %w", err)
+		return nil, fmt.Errorf("failed to update subscription: %w", err)
 	}
 
-	// TODO: refactor
-	// Запускаємо фонову задачу
-	go scheduler_service.StartRoutine(ctx, sub)
-
-	return nil // Успіх
+	return sub, nil
 }
 
 func (s *SubscriptionService) Unsubscribe(ctx context.Context, token string) error {
@@ -127,7 +121,7 @@ func (s *SubscriptionService) Unsubscribe(ctx context.Context, token string) err
 	}
 
 	// 3. Зупиняємо рутину
-	key := s.makeKey(sub)
+	key := MakeKey(sub)
 	s.mu.Lock()
 	if cancel, ok := s.routines[key]; ok {
 		cancel()
@@ -135,18 +129,14 @@ func (s *SubscriptionService) Unsubscribe(ctx context.Context, token string) err
 	}
 	s.mu.Unlock()
 
-	return nil // Успіх
+	return nil
 }
 
 func (s *SubscriptionService) fetchConfirmedSubscriptions(ctx context.Context) ([]*model.Subscription, error) {
 	return s.repo.ListConfirmed(ctx)
 }
 
-func (s *SubscriptionService) startRoutine(ctx context.Context, sub *model.Subscription) {
-	//TODO: start routines logic
-}
-
-func (s *SubscriptionService) makeKey(sub *model.Subscription) string {
+func MakeKey(sub *model.Subscription) string {
 	return fmt.Sprintf("%s|%s", sub.Email, strings.ToLower(sub.City))
 }
 

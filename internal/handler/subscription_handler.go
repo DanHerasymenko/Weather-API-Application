@@ -3,17 +3,18 @@ package handler
 import (
 	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/model"
+	"Weather-API-Application/internal/services/scheduler_service"
 	"Weather-API-Application/internal/services/subscription_service"
 	"Weather-API-Application/internal/utils/response"
 	"errors"
 	"github.com/gin-gonic/gin"
-	"log"
 	"net/http"
 )
 
 type SubscriptionHandler struct {
-	config  *config.Config
-	service *subscription_service.SubscriptionService
+	config              *config.Config
+	subscriptionService *subscription_service.SubscriptionService
+	schedulerService    *scheduler_service.SchedulerService
 }
 
 func NewSubscriptionHandler(cfg *config.Config, srvc *subscription_service.SubscriptionService) *SubscriptionHandler {
@@ -34,14 +35,14 @@ func (h *SubscriptionHandler) RegisterRoutes(router *gin.Engine) {
 
 // Subscribe godoc
 // @Summary      Subscribe to weather updates
-// @Description  Subscribes an email to weather updates for a specific city with the given frequency.
+// @Description  Subscribes an email_service to weather updates for a specific city with the given frequency.
 // @Tags         subscription
 // @Accept       application/x-www-form-urlencoded
 // @Produce      text/plain
-// @Param        email formData string true "Email address to subscribe"
+// @Param        email_service formData string true "Email address to subscribe"
 // @Param        city formData string true "City for weather updates"
 // @Param        frequency formData string true "Frequency of updates (hourly or daily)" Enums(hourly, daily)
-// @Success 200 {object} Subscription "Subscription successful. Confirmation email sent."
+// @Success 200 {object} Subscription "Subscription successful. Confirmation email_service sent."
 // @Failure      400 {string} string "Invalid input"
 // @Failure      409 {string} string "Email already subscribed"
 // @Failure      500 {string} string "Internal api error"
@@ -59,12 +60,12 @@ func (h *SubscriptionHandler) Subscribe(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Confirmation email sent."})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Confirmation email_service sent."})
 }
 
 // ConfirmSubscription godoc
-// @Summary      Confirm email subscription
-// @Description  Confirms a subscription using the token sent in the confirmation email.
+// @Summary      Confirm email_service subscription
+// @Description  Confirms a subscription using the token sent in the confirmation email_service.
 // @Tags         subscription
 // @Produce      plain
 // @Param        token  path      string  true  "Confirmation token"
@@ -72,27 +73,32 @@ func (h *SubscriptionHandler) Subscribe(ctx *gin.Context) {
 // @Failure      400    {string}  string  "Invalid token"
 // @Failure      404    {string}  string  "Token not found"
 // @Router       /confirm/{token} [get]
-func (h *SubscriptionHandler) ConfirmSubscription(c *gin.Context) {
-	token := c.Param("token")
+func (h *SubscriptionHandler) ConfirmSubscription(ctx *gin.Context) {
 
-	if err := h.service.ConfirmSubscription(c.Request.Context(), token); err != nil {
+	token := ctx.Param("token")
+
+	sub, err := h.subscriptionService.ConfirmSubscription(ctx.Request.Context(), token)
+	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrNotFound):
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		case errors.Is(err, service.ErrAlreadyConfirmed):
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case errors.Is(err, subscription_service.ErrNotFound):
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case errors.Is(err, subscription_service.ErrAlreadyConfirmed):
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Subscription confirmed."})
+	// запускаємо рутину для кокнретної підтвердженої підписки
+	go h.schedulerService.StartRoutine(ctx, sub)
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Subscription confirmed."})
 }
 
 // Unsubscribe godoc
 // @Summary      Unsubscribe from weather updates
-// @Description  Unsubscribes an email from weather updates using the token sent in emails.
+// @Description  Unsubscribes an email_service from weather updates using the token sent in emails.
 // @Tags         subscription
 // @Produce      plain
 // @Param        token  path      string  true  "Unsubscribe token"
@@ -103,7 +109,7 @@ func (h *SubscriptionHandler) ConfirmSubscription(c *gin.Context) {
 func (h *SubscriptionHandler) Unsubscribe(ctx *gin.Context) {
 
 	token := ctx.Param("token")
-	code, err := h.srvc.Subscription.Unsubs	cribe(ctx, token)
+	code, err := h.srvc.Subscription.Unsubscribe(ctx, token)
 	if err != nil {
 		response.AbortWithError(ctx, code, err)
 		return
@@ -111,4 +117,3 @@ func (h *SubscriptionHandler) Unsubscribe(ctx *gin.Context) {
 
 	ctx.String(200, "Unsubscribed successfully")
 }
-

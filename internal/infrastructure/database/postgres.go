@@ -6,10 +6,9 @@ import (
 )
 
 type PostgresDB struct {
-	DB *sql.DB
 }
 
-func NewPostgresDB(dsn string) (*PostgresDB, error) {
+func NewPostgresDB(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
@@ -19,5 +18,5 @@ func NewPostgresDB(dsn string) (*PostgresDB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	return &PostgresDB{DB: db}, nil
+	return db, nil
 }

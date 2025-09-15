@@ -1,7 +1,7 @@
 package model
 
 type Subscription struct {
-	Email     string `json:"email"`
+	Email     string `json:"email_service"`
 	City      string `json:"city"`
 	Frequency string `json:"frequency"`
 	Token     string `json:"token"`

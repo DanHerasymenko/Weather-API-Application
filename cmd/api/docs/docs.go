@@ -17,14 +17,14 @@ const docTemplate = `{
     "paths": {
         "/confirm/{token}": {
             "get": {
-                "description": "Confirms a subscription using the token sent in the confirmation email.",
+                "description": "Confirms a subscription using the token sent in the confirmation email_service.",
                 "produces": [
                     "text/plain"
                 ],
                 "tags": [
                     "subscription"
                 ],
-                "summary": "Confirm email subscription",
+                "summary": "Confirm email_service subscription",
                 "parameters": [
                     {
                         "type": "string",
@@ -58,7 +58,7 @@ const docTemplate = `{
         },
         "/subscribe": {
             "post": {
-                "description": "Subscribes an email to weather updates for a specific city with the given frequency.",
+                "description": "Subscribes an email_service to weather updates for a specific city with the given frequency.",
                 "consumes": [
                     "application/x-www-form-urlencoded"
                 ],
@@ -73,7 +73,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Email address to subscribe",
-                        "name": "email",
+                        "name": "email_service",
                         "in": "formData",
                         "required": true
                     },
@@ -98,7 +98,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Subscription successful. Confirmation email sent.",
+                        "description": "Subscription successful. Confirmation email_service sent.",
                         "schema": {
                             "$ref": "#/definitions/internal_server_handlers_subscription.Subscription"
                         }
@@ -126,7 +126,7 @@ const docTemplate = `{
         },
         "/unsubscribe/{token}": {
             "get": {
-                "description": "Unsubscribes an email from weather updates using the token sent in emails.",
+                "description": "Unsubscribes an email_service from weather updates using the token sent in emails.",
                 "produces": [
                     "text/plain"
                 ],
@@ -222,7 +222,7 @@ const docTemplate = `{
                     "description": "Whether the subscription is confirmed",
                     "type": "boolean"
                 },
-                "email": {
+                "email_service": {
                     "description": "Email address",
                     "type": "string"
                 },

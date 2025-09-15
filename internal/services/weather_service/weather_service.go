@@ -1,10 +1,11 @@
 package weather_service
 
 import (
-"Weather-API-Application/internal/config"
-"encoding/json"
-"fmt"
-"net/http"
+	"Weather-API-Application/internal/config"
+	"Weather-API-Application/internal/model"
+	"encoding/json"
+	"fmt"
+	"net/http"
 )
 
 type Service struct {
@@ -27,7 +28,7 @@ func NewService(cfg *config.Config) *Service {
 //     404 if the city is not found,
 //     or 500 if decoding the response fails.
 //   - On success, returns a populated Weather struct with temperature, humidity, and description.
-func (s *Service) FetchWeatherForCity(city string) (*Weather, error, int) {
+func (s *Service) FetchWeatherForCity(city string) (*model.Weather, error, int) {
 
 	if s.cfg.WeatherApiKey == "" {
 		return nil, fmt.Errorf("weather API key is missing in config"), http.StatusInternalServerError
@@ -45,39 +46,14 @@ func (s *Service) FetchWeatherForCity(city string) (*Weather, error, int) {
 		return nil, fmt.Errorf("city not found: failed to fetch weather data: %s", resp.Status), http.StatusNotFound
 	}
 
-	var weatherApiResp WeatherAPIResponse
+	var weatherApiResp model.WeatherAPIResponse
 	if err = json.NewDecoder(resp.Body).Decode(&weatherApiResp); err != nil {
 		return nil, fmt.Errorf("failed to decode weather data: %w", err), http.StatusInternalServerError
 	}
 
-	return &Weather{
+	return &model.Weather{
 		Temperature: weatherApiResp.Current.TempC,
 		Humidity:    weatherApiResp.Current.Humidity,
 		Description: weatherApiResp.Current.Condition.Text,
 	}, nil, http.StatusOK
-}
-
-package weather
-
-// swagger:model Weather
-type Weather struct {
-
-	// Current temperature
-	Temperature float64 `json:"temperature"`
-
-	// Current humidity percentage
-	Humidity float64 `json:"humidity"`
-
-	// Weather description
-	Description string `json:"description"`
-}
-
-type WeatherAPIResponse struct {
-	Current struct {
-		TempC     float64 `json:"temp_c"`
-		Humidity  float64 `json:"humidity"`
-		Condition struct {
-			Text string `json:"text"`
-		} `json:"condition"`
-	} `json:"current"`
 }

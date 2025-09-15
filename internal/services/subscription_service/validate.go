@@ -1,14 +1,19 @@
 package subscription_service
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
 
-//TODO: Validate request
+var errResp struct {
+	Error *struct {
+		Message string `json:"message"`
+	} `json:"error"`
+}
 
-/ ValidateCity checks if the provided city is valid by making a request to the WeatherAPI.com services.
-func (s *Service) ValidateCity(city string) (bool, error, int) {
+// ValidateCity checks if the provided city is valid by making a request to the WeatherAPI.com services.
+func (s *SubscriptionService) ValidateCity(city string) (bool, error, int) {
 	if s.cfg.WeatherApiKey == "" {
 		return false, fmt.Errorf("weather API key is missing in config"), http.StatusInternalServerError
 	}
@@ -21,11 +26,6 @@ func (s *Service) ValidateCity(city string) (bool, error, int) {
 	}
 	defer resp.Body.Close()
 
-	var errResp struct {
-		Error *struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
 	if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != nil {
 		return false, fmt.Errorf("city not found: %s", errResp.Error.Message), http.StatusBadRequest
 	}

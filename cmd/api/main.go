@@ -21,7 +21,9 @@ import (
 	"Weather-API-Application/internal/server"
 	"Weather-API-Application/internal/server/handlers"
 	"Weather-API-Application/internal/server/middleware"
-	"Weather-API-Application/internal/services"
+	"Weather-API-Application/internal/services/scheduler_service"
+	"Weather-API-Application/internal/services/subscription_service"
+	"Weather-API-Application/internal/services/weather_service"
 	"context"
 	"fmt"
 )
@@ -37,7 +39,7 @@ func main() {
 	logger.Info(ctx, "Config loaded")
 
 	// Initialize database
-	db, err := database.NewPostgresDB(ctx, cfg.GetDSN())
+	db, err := database.NewPostgresDB(cfg.GetDSN())
 	if err != nil {
 		logger.Fatal(ctx, err)
 	}
@@ -49,7 +51,9 @@ func main() {
 	subscriptionRepository := repository.NewSubscriptionRepository(db)
 
 	// Create services
-	srvc := services.NewServices(cfg, clnts)
+	schedulerService := scheduler_service.NewSchedulerService(subscriptionRepository, *emailClient, cfg)
+	subscriptionService := subscription_service.NewSubscriptionService(subscriptionRepository, *emailClient, cfg)
+	weatherService := weather_service.NewService(cfg)
 
 	// Create api
 	srvr := server.NewServer(cfg)
