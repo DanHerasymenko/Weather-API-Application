@@ -5,9 +5,6 @@ import (
 	"context"
 )
 
-type WeatherRepository interface {
-}
-
 type SubscriptionRepository interface {
 	CheckConfirmation(ctx context.Context, subscriptionRequest *model.Subscription) (rowExists bool, confirmed bool, err error)
 	Create(ctx context.Context, subscriptionRequest *model.Subscription) error

@@ -15,12 +15,11 @@ import (
 	_ "Weather-API-Application/cmd/api/docs"
 	"Weather-API-Application/internal/client"
 	"Weather-API-Application/internal/config"
+	"Weather-API-Application/internal/handler"
 	"Weather-API-Application/internal/infrastructure/database"
 	"Weather-API-Application/internal/infrastructure/repository"
 	"Weather-API-Application/internal/logger"
 	"Weather-API-Application/internal/server"
-	"Weather-API-Application/internal/server/handlers"
-	"Weather-API-Application/internal/server/middleware"
 	"Weather-API-Application/internal/services/scheduler_service"
 	"Weather-API-Application/internal/services/subscription_service"
 	"Weather-API-Application/internal/services/weather_service"
@@ -44,33 +43,31 @@ func main() {
 		logger.Fatal(ctx, err)
 	}
 
-	// Initialize Email client
+	// Initialize email client
 	emailClient := client.NewEmailClient(cfg)
 
 	// Initialize repositories
 	subscriptionRepository := repository.NewSubscriptionRepository(db)
 
-	// Create services
+	// Initialize services
 	schedulerService := scheduler_service.NewSchedulerService(subscriptionRepository, *emailClient, cfg)
 	subscriptionService := subscription_service.NewSubscriptionService(subscriptionRepository, *emailClient, cfg)
 	weatherService := weather_service.NewService(cfg)
 
-	// Create api
+	// Initialize server
 	srvr := server.NewServer(cfg)
 
-	// Register middlewares
-	mdlwrs := middleware.NewMiddlewares(cfg, clnts)
+	// Initialize handlers and register routes
+	weatherHandler := handler.NewWeatherHandler(weatherService)
+	subscriptionHandler := handler.NewSubscriptionHandler(cfg, subscriptionService, schedulerService)
+	weatherHandler.RegisterRoutes(srvr.Router)
+	subscriptionHandler.RegisterRoutes(srvr.Router)
 
-	// Create handlers
-	hdlrs := handlers.NewHandlers(cfg, srvc, mdlwrs)
-	hdlrs.RegisterRoutes(srvr.Router)
-
-	// Start weather update scheduler (send emails by goroutines)
-	if err := srvc.Subscription.StartScheduler(ctx); err != nil {
+	// Start scheduler for confirmed subscriptions
+	if err := schedulerService.StartScheduler(ctx); err != nil {
 		logger.Fatal(ctx, fmt.Errorf("failed to start subscription scheduler: %w", err))
 	}
 
-	// Run api
+	// Run API server
 	srvr.Run(ctx)
-
 }

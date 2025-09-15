@@ -1,23 +1,22 @@
 package scheduler_service
 
 import (
+	"context"
+	"fmt"
+	"log/slog"
+	"strings"
+	"sync"
+	"time"
+
 	"Weather-API-Application/internal/client"
 	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/logger"
 	"Weather-API-Application/internal/model"
 	"Weather-API-Application/internal/repository"
-	"Weather-API-Application/internal/services/email_service"
 	"Weather-API-Application/internal/services/subscription_service"
-	"context"
-	"fmt"
-	"strings"
-	"sync"
-	"time"
 )
 
-// Scheduler is responsible for spawning and managing weather update routines
-// for all confirmed subscriptions.
-
+// SchedulerService manages background weather update routines for confirmed subscriptions.
 type SchedulerService struct {
 	repo        repository.SubscriptionRepository
 	emailClient client.EmailClient
@@ -35,8 +34,7 @@ func NewSchedulerService(repo repository.SubscriptionRepository, emailClient cli
 	}
 }
 
-// StartScheduler fetches all confirmed subscriptions from the database
-// and starts a background goroutine for each one to send periodic weather updates.
+// StartScheduler starts routines for all confirmed subscriptions.
 func (s *SchedulerService) StartScheduler(ctx context.Context) error {
 	subs, err := s.repo.ListConfirmed(ctx)
 	if err != nil {
@@ -44,8 +42,7 @@ func (s *SchedulerService) StartScheduler(ctx context.Context) error {
 	}
 
 	for _, sub := range subs {
-
-		// For each subscription, create a new own context with a cancel function
+		// Create a context for this subscription
 		subCtx, cancel := context.WithCancel(ctx)
 		key := subscription_service.MakeKey(sub)
 
@@ -53,67 +50,64 @@ func (s *SchedulerService) StartScheduler(ctx context.Context) error {
 		s.routines[key] = cancel
 		s.mu.Unlock()
 
-		// Start the routine for this particular subscription
 		go s.StartRoutine(subCtx, sub)
 	}
 
-	logger.Info(ctx, fmt.Sprintf("Starting %d subscription routines", len(subs)))
-
+	logger.Info(ctx, "Starting subscription routines",
+		slog.Int("count", len(subs)))
 	return nil
 }
 
-// startRoutine runs a background loop for a single subscription.
-// It determines whether the updates should be sent hourly or daily,
-// waits for the correct interval, then periodically calls sendUpdate.
-// The routine stops when the provided context is cancelled.
+// StartRoutine runs periodic updates for a single subscription until the context is cancelled.
 func (s *SchedulerService) StartRoutine(ctx context.Context, sub *model.Subscription) {
-
-	// Detect the interval based on the subscription frequency
+	// Determine interval
 	interval := time.Hour
 	if strings.ToLower(sub.Frequency) == "daily" {
 		interval = 24 * time.Hour
 
-		// Calculate how long to wait until the next daily update
+		// Wait until next scheduled daily start
 		now := time.Now()
 		next := time.Date(
 			now.Year(), now.Month(), now.Day(),
 			s.cfg.DailyStartHour, 0, 0, 0,
 			now.Location(),
 		)
-
-		// If current time is after the next scheduled time, add 24 hours
 		if now.After(next) {
 			next = next.Add(24 * time.Hour)
 		}
-
-		// Wait until the next scheduled time
 		select {
 		case <-time.After(time.Until(next)):
-			// continue to the loop with proper start time
 		case <-ctx.Done():
-			logger.Info(ctx, fmt.Sprintf("Routine cancelled before first run: %s - %s", sub.Email, sub.City))
+			logger.Info(ctx, "Routine cancelled before first run",
+				slog.String("email", sub.Email),
+				slog.String("city", sub.City))
 			return
 		}
-	} else {
-		interval = time.Hour
 	}
 
-	// Create a ticker to send updates with the specified interval
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Info(ctx, fmt.Sprintf("Stopping routine for %s - %s", sub.Email, sub.City))
+			logger.Info(ctx, "Stopping routine",
+				slog.String("email", sub.Email),
+				slog.String("city", sub.City))
 			return
-
 		case <-ticker.C:
-			logger.Info(ctx, fmt.Sprintf("Attempting to send update to %s for %s", sub.Email, sub.City))
-			if err := email_service.SendUpdate(ctx, s.cfg.WeatherApiKey, sub, s.emailClient); err != nil {
-				logger.Error(ctx, err)
+			logger.Info(ctx, "Attempting to send update",
+				slog.String("email", sub.Email),
+				slog.String("city", sub.City))
+			if err := client.SendUpdate(ctx, s.cfg.WeatherApiKey, sub, s.emailClient); err != nil {
+				logger.Error(ctx, err,
+					slog.String("email", sub.Email),
+					slog.String("city", sub.City))
+			} else {
+				logger.Info(ctx, "Weather update sent",
+					slog.String("email", sub.Email),
+					slog.String("city", sub.City))
 			}
-			logger.Info(ctx, fmt.Sprintf("Weather update sent to %s for city %s", sub.Email, sub.City))
 		}
 	}
 }

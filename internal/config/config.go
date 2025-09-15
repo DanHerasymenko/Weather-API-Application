@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+
 	"github.com/caarlos0/env/v11"
 )
 
@@ -32,7 +33,48 @@ func NewConfigFromEnv() (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config from env: %w", err)
 	}
+
+	// Validate required configuration
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("config validation failed: %w", err)
+	}
+
 	return cfg, nil
+}
+
+// Validate checks that all required configuration values are present
+func (cfg *Config) Validate() error {
+	if cfg.WeatherApiKey == "" {
+		return fmt.Errorf("WEATHER_API_KEY is required")
+	}
+	if cfg.BaseURL == "" {
+		return fmt.Errorf("APP_BASE_URL is required")
+	}
+	if cfg.EmailClientFrom == "" {
+		return fmt.Errorf("SMTP_FROM is required")
+	}
+	if cfg.EmailClientPassword == "" {
+		return fmt.Errorf("SMTP_PASSWORD is required")
+	}
+	if cfg.EmailClientHost == "" {
+		return fmt.Errorf("SMTP_HOST is required")
+	}
+	if cfg.EmailClientPort == "" {
+		return fmt.Errorf("SMTP_PORT is required")
+	}
+	if cfg.PostgresContainerHost == "" {
+		return fmt.Errorf("POSTGRES_CONTAINER_HOST is required")
+	}
+	if cfg.PostgresUser == "" {
+		return fmt.Errorf("POSTGRES_USER is required")
+	}
+	if cfg.PostgresPassword == "" {
+		return fmt.Errorf("POSTGRES_PASSWORD is required")
+	}
+	if cfg.PostgresDB == "" {
+		return fmt.Errorf("POSTGRES_DB is required")
+	}
+	return nil
 }
 
 func (cfg *Config) GetDSN() string {

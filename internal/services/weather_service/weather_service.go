@@ -8,6 +8,11 @@ import (
 	"net/http"
 )
 
+// WeatherService defines the interface for weather operations
+type WeatherService interface {
+	FetchWeatherForCity(city string) (*model.Weather, error, int)
+}
+
 type Service struct {
 	cfg *config.Config
 }

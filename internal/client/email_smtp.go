@@ -1,14 +1,16 @@
 package client
 
 import (
-	"Weather-API-Application/internal/config"
-	"Weather-API-Application/internal/logger"
-	"Weather-API-Application/internal/model"
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/smtp"
+
+	"Weather-API-Application/internal/config"
+	"Weather-API-Application/internal/logger"
+	"Weather-API-Application/internal/model"
 )
 
 type EmailClient struct {
@@ -22,12 +24,12 @@ func NewEmailClient(cfg *config.Config) *EmailClient {
 	return &EmailClient{From: cfg.EmailClientFrom, Password: cfg.EmailClientPassword, Host: cfg.EmailClientHost, Port: cfg.EmailClientPort}
 }
 
-// Client is an interface that defines the methods for sending emails
+// Client defines methods for sending emails.
 type Client interface {
 	SendEmail(ctx context.Context, to, subject, body string) error
 }
 
-// SendEmail sends an email_service using the SMTP client
+// SendEmail sends an email using SMTP.
 func (c *EmailClient) SendEmail(ctx context.Context, to, subject, body string) error {
 	msg := []byte("To: " + to + "\r\n" +
 		"Subject: " + subject + "\r\n" +
@@ -36,21 +38,18 @@ func (c *EmailClient) SendEmail(ctx context.Context, to, subject, body string) e
 
 	auth := smtp.PlainAuth("", c.From, c.Password, c.Host)
 
-	err := smtp.SendMail(c.Host+":"+c.Port, auth, c.From, []string{to}, msg)
-	if err != nil {
+	if err := smtp.SendMail(c.Host+":"+c.Port, auth, c.From, []string{to}, msg); err != nil {
 		return err
 	}
-	logger.Info(ctx, "Email sent successfully to "+to)
 
+	logger.Info(ctx, "Email sent successfully",
+		slog.String("to", to),
+		slog.String("subject", subject))
 	return nil
 }
 
-// sendUpdate fetches the current weather data for the given subscription's city,
-// formats it into a plain text message, and sends it via email_client to the subscriber.
-// Returns an error if any of the steps fail (HTTP request, JSON parsing, or email_service sending).
+// SendUpdate fetches current weather for the subscription city and emails the user.
 func SendUpdate(ctx context.Context, apiKey string, sub *model.Subscription, emailClient EmailClient) error {
-
-	// Fetch the weather data for the city
 	if apiKey == "" {
 		return fmt.Errorf("weather API key is missing in config")
 	}
@@ -72,15 +71,12 @@ func SendUpdate(ctx context.Context, apiKey string, sub *model.Subscription, ema
 		return fmt.Errorf("failed to decode weather data: %w", err)
 	}
 
-	// Prepare the email_service content
 	weatherMailText := fmt.Sprintf(`Weather for %s:<br>- temperature: %.1f°C<br>- humidity: %.0f%%<br>- description: %s`,
 		sub.City, weatherApiResp.Current.TempC, weatherApiResp.Current.Humidity, weatherApiResp.Current.Condition.Text)
 	subject := fmt.Sprintf("%s forecast", sub.City)
 
-	// Send the email_service
 	if err := emailClient.SendEmail(ctx, sub.Email, subject, weatherMailText); err != nil {
-		return fmt.Errorf("failed to send email_service to %s for city %s: %w", sub.Email, sub.City, err)
+		return fmt.Errorf("failed to send email to %s for city %s: %w", sub.Email, sub.City, err)
 	}
-
 	return nil
 }
