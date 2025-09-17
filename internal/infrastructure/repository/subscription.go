@@ -12,23 +12,13 @@ type SubscriptionRepository struct {
 	db *sql.DB
 }
 
-// Доменно-орієнтована помилка для "не знайдено".
-// Використовуйте errors.Is(err, repository.ErrNotFound) у сервісному шарі.
 var ErrNotFound = errors.New("subscription not found")
 
 func NewSubscriptionRepository(db *sql.DB) repository.SubscriptionRepository {
 	return &SubscriptionRepository{db: db}
 }
 
-// CheckConfirmation повертає:
-// - rowExists = false, якщо рядка немає (без помилки);
-// - confirmed = true/false, якщо рядок існує;
-// - err — інші помилки БД.
-func (r *SubscriptionRepository) CheckConfirmation(
-	ctx context.Context,
-	subscriptionRequest *model.Subscription,
-) (rowExists bool, confirmed bool, err error) {
-
+func (r *SubscriptionRepository) CheckConfirmation(ctx context.Context, subscriptionRequest *model.Subscription) (rowExists bool, confirmed bool, err error) {
 	const query = `
 		SELECT confirmed
 		FROM weather_subscriptions
@@ -46,8 +36,6 @@ func (r *SubscriptionRepository) CheckConfirmation(
 	return true, confirmed, nil
 }
 
-// Create вставляє новий запис. Використовуємо ExecContext, бо ідентифікатор
-// нам тут не потрібен (за потреби можна додати RETURNING id і зчитати через QueryRowContext).
 func (r *SubscriptionRepository) Create(ctx context.Context, s *model.Subscription) error {
 	const query = `
 		INSERT INTO weather_subscriptions (email_service, city, token, frequency, confirmed, created_at)
@@ -57,8 +45,6 @@ func (r *SubscriptionRepository) Create(ctx context.Context, s *model.Subscripti
 	return err
 }
 
-// UpdateTokenByEmailCity оновлює токен для існуючого запису і скидає confirmed у FALSE.
-// ВАЖЛИВО: перед викликом встановіть у req.Token новий token.
 func (r *SubscriptionRepository) UpdateTokenByEmailCity(ctx context.Context, s *model.Subscription) error {
 	const query = `
 		UPDATE weather_subscriptions
@@ -77,7 +63,6 @@ func (r *SubscriptionRepository) UpdateTokenByEmailCity(ctx context.Context, s *
 	return nil
 }
 
-// GetByToken повертає id та повну підписку за токеном.
 func (r *SubscriptionRepository) GetByToken(ctx context.Context, token string) (string, *model.Subscription, error) {
 	const query = `
 		SELECT id, email_service, city, frequency, confirmed
@@ -108,7 +93,6 @@ func (r *SubscriptionRepository) GetByToken(ctx context.Context, token string) (
 	}, nil
 }
 
-// SetConfirmed виставляє confirmed=TRUE для запису за id.
 func (r *SubscriptionRepository) SetConfirmed(ctx context.Context, subId string) error {
 	const query = `
 		UPDATE weather_subscriptions
@@ -126,7 +110,6 @@ func (r *SubscriptionRepository) SetConfirmed(ctx context.Context, subId string)
 	return nil
 }
 
-// DeleteByToken видаляє запис за токеном.
 func (r *SubscriptionRepository) DeleteByToken(ctx context.Context, token string) error {
 	const query = `
 		DELETE FROM weather_subscriptions
@@ -143,7 +126,6 @@ func (r *SubscriptionRepository) DeleteByToken(ctx context.Context, token string
 	return nil
 }
 
-// ListConfirmed повертає всі підтверджені підписки — зручно для шедулера.
 func (r *SubscriptionRepository) ListConfirmed(ctx context.Context) ([]*model.Subscription, error) {
 	const query = `
 		SELECT email_service, city, frequency, token, confirmed
