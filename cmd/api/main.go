@@ -51,7 +51,7 @@ func main() {
 
 	// Initialize services
 	schedulerService := scheduler_service.NewSchedulerService(subscriptionRepository, *emailClient, cfg)
-	subscriptionService := subscription_service.NewSubscriptionService(subscriptionRepository, *emailClient, cfg)
+	subscriptionService := subscription_service.NewSubscriptionService(subscriptionRepository, *emailClient, cfg).WithScheduler(schedulerService)
 	weatherService := weather_service.NewService(cfg)
 
 	// Initialize server
@@ -59,7 +59,7 @@ func main() {
 
 	// Initialize handlers and register routes
 	weatherHandler := handler.NewWeatherHandler(weatherService)
-	subscriptionHandler := handler.NewSubscriptionHandler(cfg, subscriptionService, schedulerService)
+	subscriptionHandler := handler.NewSubscriptionHandler(cfg, subscriptionService)
 	weatherHandler.RegisterRoutes(srvr.Router)
 	subscriptionHandler.RegisterRoutes(srvr.Router)
 

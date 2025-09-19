@@ -43,15 +43,22 @@ func (h *WeatherHandler) GetWeather(ctx *gin.Context) {
 
 	// Validate input
 	if !validate.IsValidCity(city) {
-		response.AbortWithErrorJSON(ctx, http.StatusBadRequest,
-			ctx.Error(fmt.Errorf("invalid city parameter")),
+		response.WriteErrorJSON(ctx, http.StatusBadRequest,
+			fmt.Errorf("invalid city parameter"),
 			"City parameter is required and cannot be empty")
 		return
 	}
 
 	fetchedWeather, err, code := h.svc.FetchWeatherForCity(city)
 	if err != nil {
-		response.AbortWithError(ctx, code, err)
+		msg := "Internal server error"
+		switch code {
+		case http.StatusNotFound:
+			msg = "City not found"
+		case http.StatusBadRequest:
+			msg = "Invalid request"
+		}
+		response.WriteErrorJSON(ctx, code, err, msg)
 		return
 	}
 	ctx.JSON(200, fetchedWeather)

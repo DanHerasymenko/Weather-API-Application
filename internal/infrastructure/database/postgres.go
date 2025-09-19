@@ -5,9 +5,6 @@ import (
 	"fmt"
 )
 
-type PostgresDB struct {
-}
-
 func NewPostgresDB(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {

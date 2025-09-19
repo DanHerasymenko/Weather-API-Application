@@ -13,7 +13,6 @@ import (
 	"Weather-API-Application/internal/logger"
 	"Weather-API-Application/internal/model"
 	"Weather-API-Application/internal/repository"
-	"Weather-API-Application/internal/services/subscription_service"
 )
 
 // SchedulerService manages background weather update routines for confirmed subscriptions.
@@ -34,6 +33,11 @@ func NewSchedulerService(repo repository.SubscriptionRepository, emailClient cli
 	}
 }
 
+// makeKey builds a unique key for a subscription.
+func makeKey(sub *model.Subscription) string {
+	return fmt.Sprintf("%s|%s", sub.Email, strings.ToLower(sub.City))
+}
+
 // StartScheduler starts routines for all confirmed subscriptions.
 func (s *SchedulerService) StartScheduler(ctx context.Context) error {
 	subs, err := s.repo.ListConfirmed(ctx)
@@ -42,20 +46,36 @@ func (s *SchedulerService) StartScheduler(ctx context.Context) error {
 	}
 
 	for _, sub := range subs {
-		// Create a context for this subscription
-		subCtx, cancel := context.WithCancel(ctx)
-		key := subscription_service.MakeKey(sub)
-
-		s.mu.Lock()
-		s.routines[key] = cancel
-		s.mu.Unlock()
-
-		go s.StartRoutine(subCtx, sub)
+		s.StartFor(ctx, sub)
 	}
 
 	logger.Info(ctx, "Starting subscription routines",
 		slog.Int("count", len(subs)))
 	return nil
+}
+
+// StartFor starts a routine for a single subscription.
+func (s *SchedulerService) StartFor(ctx context.Context, sub *model.Subscription) {
+	subCtx, cancel := context.WithCancel(ctx)
+	key := makeKey(sub)
+
+	s.mu.Lock()
+	s.routines[key] = cancel
+	s.mu.Unlock()
+
+	go s.StartRoutine(subCtx, sub)
+	logger.Info(ctx, "Routine started", slog.String("email", sub.Email), slog.String("city", sub.City))
+}
+
+// StopFor stops a routine for a single subscription if running.
+func (s *SchedulerService) StopFor(sub *model.Subscription) {
+	key := makeKey(sub)
+	s.mu.Lock()
+	if cancel, ok := s.routines[key]; ok {
+		cancel()
+		delete(s.routines, key)
+	}
+	s.mu.Unlock()
 }
 
 // StartRoutine runs periodic updates for a single subscription until the context is cancelled.

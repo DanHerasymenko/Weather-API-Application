@@ -4,16 +4,21 @@ RUN apk update && apk add --no-cache git
 COPY go.mod go.sum ./
 RUN go mod download
 
-FROM base as dev
-CMD ["go", "run", "./cmd/server/main.go"]
+# Optional: install swag for swagger generation
+RUN go install github.com/swaggo/swag/cmd/swag@latest
 
 FROM base as build
 COPY cmd ./cmd
 COPY internal ./internal
 COPY migrations ./migrations
 COPY static ./static
-#RUN apk add --no-cache gcc musl-dev make swag
-#RUN swag init -g cmd/api/main.go -o cmd/api/docs
+
+# Optional: generate swagger during build (uncomment if needed)
+# RUN swag init -g cmd/api/main.go -o cmd/api/docs
+
 RUN mkdir -p /build
-RUN go build -o /build/api ./cmd/api/main.go
+RUN go build -o /build/server ./cmd/api/main.go
 CMD ["/build/server"]
+
+FROM base as dev
+CMD ["go", "run", "./cmd/api/main.go"]

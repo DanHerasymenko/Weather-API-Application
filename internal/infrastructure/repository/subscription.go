@@ -22,7 +22,7 @@ func (r *SubscriptionRepository) CheckConfirmation(ctx context.Context, subscrip
 	const query = `
 		SELECT confirmed
 		FROM weather_subscriptions
-		WHERE email_service = $1 AND city = $2
+		WHERE email = $1 AND city = $2
 	`
 	row := r.db.QueryRowContext(ctx, query, subscriptionRequest.Email, subscriptionRequest.City)
 	err = row.Scan(&confirmed)
@@ -38,7 +38,7 @@ func (r *SubscriptionRepository) CheckConfirmation(ctx context.Context, subscrip
 
 func (r *SubscriptionRepository) Create(ctx context.Context, s *model.Subscription) error {
 	const query = `
-		INSERT INTO weather_subscriptions (email_service, city, token, frequency, confirmed, created_at)
+		INSERT INTO weather_subscriptions (email, city, token, frequency, confirmed, created_at)
 		VALUES ($1,   $2,   $3,    $4,       FALSE,     NOW())
 	`
 	_, err := r.db.ExecContext(ctx, query, s.Email, s.City, s.Token, s.Frequency)
@@ -49,7 +49,7 @@ func (r *SubscriptionRepository) UpdateTokenByEmailCity(ctx context.Context, s *
 	const query = `
 		UPDATE weather_subscriptions
 		SET token = $1, confirmed = FALSE, created_at = NOW()
-		WHERE email_service = $2 AND city = $3
+		WHERE email = $2 AND city = $3
 	`
 	res, err := r.db.ExecContext(ctx, query, s.Token, s.Email, s.City)
 	if err != nil {
@@ -57,7 +57,7 @@ func (r *SubscriptionRepository) UpdateTokenByEmailCity(ctx context.Context, s *
 	}
 	aff, _ := res.RowsAffected()
 	if aff == 0 {
-		// Немає такого рядка — повертаємо доменну помилку
+		// No rows affected - return domain error
 		return ErrNotFound
 	}
 	return nil
@@ -65,7 +65,7 @@ func (r *SubscriptionRepository) UpdateTokenByEmailCity(ctx context.Context, s *
 
 func (r *SubscriptionRepository) GetByToken(ctx context.Context, token string) (string, *model.Subscription, error) {
 	const query = `
-		SELECT id, email_service, city, frequency, confirmed
+		SELECT id, email, city, frequency, confirmed
 		FROM weather_subscriptions
 		WHERE token = $1
 	`
@@ -128,10 +128,10 @@ func (r *SubscriptionRepository) DeleteByToken(ctx context.Context, token string
 
 func (r *SubscriptionRepository) ListConfirmed(ctx context.Context) ([]*model.Subscription, error) {
 	const query = `
-		SELECT email_service, city, frequency, token, confirmed
+		SELECT email, city, frequency, token, confirmed
 		FROM weather_subscriptions
 		WHERE confirmed = TRUE
-		ORDER BY email_service, city
+		ORDER BY email, city
 	`
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {

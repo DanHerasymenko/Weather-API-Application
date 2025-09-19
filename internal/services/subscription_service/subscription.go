@@ -17,12 +17,17 @@ import (
 	"Weather-API-Application/internal/repository"
 )
 
+type Scheduler interface {
+	StartFor(ctx context.Context, sub *model.Subscription)
+	StopFor(sub *model.Subscription)
+}
+
 type SubscriptionService struct {
 	repo        repository.SubscriptionRepository
 	emailClient client.EmailClient
 	cfg         *config.Config
+	scheduler   Scheduler
 	mu          sync.Mutex
-	routines    map[string]context.CancelFunc
 }
 
 func NewSubscriptionService(repo repository.SubscriptionRepository, emailClient client.EmailClient, cfg *config.Config) *SubscriptionService {
@@ -31,6 +36,11 @@ func NewSubscriptionService(repo repository.SubscriptionRepository, emailClient 
 		emailClient: emailClient,
 		cfg:         cfg,
 	}
+}
+
+func (s *SubscriptionService) WithScheduler(scheduler Scheduler) *SubscriptionService {
+	s.scheduler = scheduler
+	return s
 }
 
 // Subscribe creates a new subscription or updates a pending one and sends a confirmation email.
@@ -112,6 +122,10 @@ func (s *SubscriptionService) ConfirmSubscription(ctx context.Context, token str
 	logger.Info(ctx, "Subscription confirmed",
 		slog.String("email", sub.Email),
 		slog.String("city", sub.City))
+
+	if s.scheduler != nil {
+		s.scheduler.StartFor(ctx, sub)
+	}
 	return sub, nil
 }
 
@@ -129,13 +143,9 @@ func (s *SubscriptionService) Unsubscribe(ctx context.Context, token string) err
 		return fmt.Errorf("failed to delete subscription: %w", err)
 	}
 
-	key := MakeKey(sub)
-	s.mu.Lock()
-	if cancel, ok := s.routines[key]; ok {
-		cancel()
-		delete(s.routines, key)
+	if s.scheduler != nil {
+		s.scheduler.StopFor(sub)
 	}
-	s.mu.Unlock()
 
 	logger.Info(ctx, "Subscription unsubscribed",
 		slog.String("email", sub.Email),

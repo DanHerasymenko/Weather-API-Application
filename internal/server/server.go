@@ -25,6 +25,10 @@ func NewServer(cfg *config.Config) *Server {
 	router.Use(middleware.Logger())
 	router.Use(gin.Recovery())
 
+	// Serve static assets
+	router.Static("/static", "./static")
+	router.GET("/", func(c *gin.Context) { c.File("./static/index.html") })
+
 	return &Server{
 		cfg:    cfg,
 		Router: router,

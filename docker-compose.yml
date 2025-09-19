@@ -37,6 +37,7 @@ services:
     env_file:
       - .env
     container_name: weather_service
+    # Mounting source is useful for dev; remove in production
     volumes:
       - ./cmd:/app/cmd
       - ./internal:/app/internal

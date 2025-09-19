@@ -7,7 +7,6 @@ import (
 
 	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/model"
-	"Weather-API-Application/internal/services/scheduler_service"
 	"Weather-API-Application/internal/services/subscription_service"
 	"Weather-API-Application/internal/utils/response"
 	"Weather-API-Application/internal/utils/validate"
@@ -18,14 +17,12 @@ import (
 type SubscriptionHandler struct {
 	config              *config.Config
 	subscriptionService *subscription_service.SubscriptionService
-	schedulerService    *scheduler_service.SchedulerService
 }
 
-func NewSubscriptionHandler(cfg *config.Config, subSvc *subscription_service.SubscriptionService, schedSvc *scheduler_service.SchedulerService) *SubscriptionHandler {
+func NewSubscriptionHandler(cfg *config.Config, subSvc *subscription_service.SubscriptionService) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		config:              cfg,
 		subscriptionService: subSvc,
-		schedulerService:    schedSvc,
 	}
 }
 
@@ -54,26 +51,26 @@ func (h *SubscriptionHandler) RegisterRoutes(router *gin.Engine) {
 func (h *SubscriptionHandler) Subscribe(ctx *gin.Context) {
 	var req model.Subscription
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		response.AbortWithErrorJSON(ctx, http.StatusBadRequest, err, "Invalid input")
+		response.WriteErrorJSON(ctx, http.StatusBadRequest, err, "Invalid input")
 		return
 	}
 
 	// Validate input
 	if !validate.IsValidEmail(req.Email) {
-		response.AbortWithErrorJSON(ctx, http.StatusBadRequest,
-			ctx.Error(fmt.Errorf("invalid email format")),
+		response.WriteErrorJSON(ctx, http.StatusBadRequest,
+			fmt.Errorf("invalid email format"),
 			"Invalid email format")
 		return
 	}
 	if !validate.IsValidCity(req.City) {
-		response.AbortWithErrorJSON(ctx, http.StatusBadRequest,
-			ctx.Error(fmt.Errorf("invalid city")),
+		response.WriteErrorJSON(ctx, http.StatusBadRequest,
+			fmt.Errorf("invalid city"),
 			"City is required and cannot be empty")
 		return
 	}
 	if !validate.IsValidFrequency(req.Frequency) {
-		response.AbortWithErrorJSON(ctx, http.StatusBadRequest,
-			ctx.Error(fmt.Errorf("invalid frequency")),
+		response.WriteErrorJSON(ctx, http.StatusBadRequest,
+			fmt.Errorf("invalid frequency"),
 			"Frequency must be 'hourly' or 'daily'")
 		return
 	}
@@ -81,10 +78,10 @@ func (h *SubscriptionHandler) Subscribe(ctx *gin.Context) {
 	if err := h.subscriptionService.Subscribe(ctx.Request.Context(), &req); err != nil {
 		switch {
 		case errors.Is(err, subscription_service.ErrSubscriptionExists):
-			response.AbortWithErrorJSON(ctx, http.StatusConflict, err, "Email already subscribed")
+			response.WriteErrorJSON(ctx, http.StatusConflict, err, "Email already subscribed")
 			return
 		default:
-			response.AbortWithErrorJSON(ctx, http.StatusInternalServerError, err, "Internal server error")
+			response.WriteErrorJSON(ctx, http.StatusInternalServerError, err, "Internal server error")
 			return
 		}
 	}
@@ -105,23 +102,20 @@ func (h *SubscriptionHandler) Subscribe(ctx *gin.Context) {
 func (h *SubscriptionHandler) ConfirmSubscription(ctx *gin.Context) {
 	token := ctx.Param("token")
 
-	sub, err := h.subscriptionService.ConfirmSubscription(ctx.Request.Context(), token)
+	_, err := h.subscriptionService.ConfirmSubscription(ctx.Request.Context(), token)
 	if err != nil {
 		switch {
 		case errors.Is(err, subscription_service.ErrNotFound):
-			response.AbortWithErrorJSON(ctx, http.StatusNotFound, err, "Token not found")
+			response.WriteErrorJSON(ctx, http.StatusNotFound, err, "Token not found")
 			return
 		case errors.Is(err, subscription_service.ErrAlreadyConfirmed):
-			response.AbortWithErrorJSON(ctx, http.StatusBadRequest, err, "Already confirmed")
+			response.WriteErrorJSON(ctx, http.StatusBadRequest, err, "Already confirmed")
 			return
 		default:
-			response.AbortWithErrorJSON(ctx, http.StatusInternalServerError, err, "Internal server error")
+			response.WriteErrorJSON(ctx, http.StatusInternalServerError, err, "Internal server error")
 			return
 		}
 	}
-
-	// Start routine for this confirmed subscription
-	go h.schedulerService.StartRoutine(ctx.Request.Context(), sub)
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "Subscription confirmed."})
 }
@@ -141,10 +135,10 @@ func (h *SubscriptionHandler) Unsubscribe(ctx *gin.Context) {
 	if err := h.subscriptionService.Unsubscribe(ctx.Request.Context(), token); err != nil {
 		switch {
 		case errors.Is(err, subscription_service.ErrNotFound):
-			response.AbortWithErrorJSON(ctx, http.StatusNotFound, err, "Token not found")
+			response.WriteErrorJSON(ctx, http.StatusNotFound, err, "Token not found")
 			return
 		default:
-			response.AbortWithErrorJSON(ctx, http.StatusInternalServerError, err, "Internal server error")
+			response.WriteErrorJSON(ctx, http.StatusInternalServerError, err, "Internal server error")
 			return
 		}
 	}
