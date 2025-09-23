@@ -12,4 +12,4 @@ CREATE TABLE IF NOT EXISTS weather_subscriptions (
 );
 
 -- +goose Down
-DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS weather_subscriptions;
