@@ -15,16 +15,16 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/confirm/{token}": {
+        "/subscription/confirm/{token}": {
             "get": {
-                "description": "Confirms a subscription using the token sent in the confirmation email_service.",
+                "description": "Confirms a subscription using the token from the confirmation email.",
                 "produces": [
-                    "text/plain"
+                    "application/json"
                 ],
                 "tags": [
                     "subscription"
                 ],
-                "summary": "Confirm email_service subscription",
+                "summary": "Confirm subscription",
                 "parameters": [
                     {
                         "type": "string",
@@ -44,26 +44,26 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid token",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Token not found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/subscribe": {
+        "/subscription/subscribe": {
             "post": {
-                "description": "Subscribes an email_service to weather updates for a specific city with the given frequency.",
+                "description": "Subscribes an email to weather updates for a city with a frequency.",
                 "consumes": [
-                    "application/x-www-form-urlencoded"
+                    "application/json"
                 ],
                 "produces": [
-                    "text/plain"
+                    "application/json"
                 ],
                 "tags": [
                     "subscription"
@@ -71,64 +71,48 @@ const docTemplate = `{
                 "summary": "Subscribe to weather updates",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Email address to subscribe",
-                        "name": "email_service",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "City for weather updates",
-                        "name": "city",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "enum": [
-                            "hourly",
-                            "daily"
-                        ],
-                        "type": "string",
-                        "description": "Frequency of updates (hourly or daily)",
-                        "name": "frequency",
-                        "in": "formData",
-                        "required": true
+                        "description": "Subscription request",
+                        "name": "subscription",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Subscription"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Subscription successful. Confirmation email_service sent.",
+                        "description": "Subscription request accepted. Confirmation email sent.",
                         "schema": {
-                            "$ref": "#/definitions/internal_server_handlers_subscription.Subscription"
+                            "$ref": "#/definitions/model.Subscription"
                         }
                     },
                     "400": {
                         "description": "Invalid input",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Email already subscribed",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal api error",
+                        "description": "Internal error",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/unsubscribe/{token}": {
+        "/subscription/unsubscribe/{token}": {
             "get": {
-                "description": "Unsubscribes an email_service from weather updates using the token sent in emails.",
+                "description": "Unsubscribes an email using the provided token.",
                 "produces": [
-                    "text/plain"
+                    "application/json"
                 ],
                 "tags": [
                     "subscription"
@@ -153,13 +137,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid token",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Token not found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -167,7 +151,7 @@ const docTemplate = `{
         },
         "/weather": {
             "get": {
-                "description": "Returns the current weather forecast for the specified city using WeatherAPI.com.",
+                "description": "Returns the current weather for the specified city using WeatherAPI.com.",
                 "consumes": [
                     "application/json"
                 ],
@@ -181,7 +165,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "City name for weather forecast",
+                        "description": "City name",
                         "name": "city",
                         "in": "query",
                         "required": true
@@ -189,21 +173,21 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Successful operation - current weather forecast returned",
+                        "description": "Current weather returned",
                         "schema": {
-                            "$ref": "#/definitions/weather.Weather"
+                            "$ref": "#/definitions/model.Weather"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "City not found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -211,41 +195,45 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "internal_server_handlers_subscription.Subscription": {
+        "model.Subscription": {
             "type": "object",
             "properties": {
                 "city": {
-                    "description": "City for weather updates",
                     "type": "string"
                 },
                 "confirmed": {
-                    "description": "Whether the subscription is confirmed",
                     "type": "boolean"
                 },
-                "email_service": {
-                    "description": "Email address",
+                "email": {
                     "type": "string"
                 },
                 "frequency": {
-                    "description": "Frequency of updates\nEnum: hourly, daily",
+                    "type": "string"
+                },
+                "token": {
                     "type": "string"
                 }
             }
         },
-        "weather.Weather": {
+        "model.Weather": {
             "type": "object",
             "properties": {
                 "description": {
-                    "description": "Weather description",
                     "type": "string"
                 },
                 "humidity": {
-                    "description": "Current humidity percentage",
                     "type": "number"
                 },
                 "temperature": {
-                    "description": "Current temperature",
                     "type": "number"
+                }
+            }
+        },
+        "response.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
                 }
             }
         }
@@ -262,7 +250,7 @@ const docTemplate = `{
     ]
 }`
 
-// SwaggerInfo holds exported Swagger Info so client can modify it
+// SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0.0",
 	Host:             "",

@@ -1,33 +1,31 @@
 basePath: /api
 definitions:
-  internal_server_handlers_subscription.Subscription:
+  model.Subscription:
     properties:
       city:
-        description: City for weather updates
         type: string
       confirmed:
-        description: Whether the subscription is confirmed
         type: boolean
       email:
-        description: Email address
         type: string
       frequency:
-        description: |-
-          Frequency of updates
-          Enum: hourly, daily
+        type: string
+      token:
         type: string
     type: object
-  weather.Weather:
+  model.Weather:
     properties:
       description:
-        description: Weather description
         type: string
       humidity:
-        description: Current humidity percentage
         type: number
       temperature:
-        description: Current temperature
         type: number
+    type: object
+  response.ErrorResponse:
+    properties:
+      error:
+        type: string
     type: object
 info:
   contact: {}
@@ -36,10 +34,9 @@ info:
   title: Weather Forecast API
   version: 1.0.0
 paths:
-  /confirm/{token}:
+  /subscription/confirm/{token}:
     get:
-      description: Confirms a subscription using the token sent in the confirmation
-        email_service.
+      description: Confirms a subscription using the token from the confirmation email.
       parameters:
       - description: Confirmation token
         in: path
@@ -47,7 +44,7 @@ paths:
         required: true
         type: string
       produces:
-      - text/plain
+      - application/json
       responses:
         "200":
           description: Subscription confirmed successfully
@@ -56,65 +53,51 @@ paths:
         "400":
           description: Invalid token
           schema:
-            type: string
+            $ref: '#/definitions/response.ErrorResponse'
         "404":
           description: Token not found
           schema:
-            type: string
-      summary: Confirm email_service subscription
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Confirm subscription
       tags:
       - subscription
-  /subscribe:
+  /subscription/subscribe:
     post:
       consumes:
-      - application/x-www-form-urlencoded
-      description: Subscribes an email_service to weather updates for a specific city with
-        the given frequency.
+      - application/json
+      description: Subscribes an email to weather updates for a city with a frequency.
       parameters:
-      - description: Email address to subscribe
-        in: formData
-        name: email_service
+      - description: Subscription request
+        in: body
+        name: subscription
         required: true
-        type: string
-      - description: City for weather updates
-        in: formData
-        name: city
-        required: true
-        type: string
-      - description: Frequency of updates (hourly or daily)
-        enum:
-        - hourly
-        - daily
-        in: formData
-        name: frequency
-        required: true
-        type: string
+        schema:
+          $ref: '#/definitions/model.Subscription'
       produces:
-      - text/plain
+      - application/json
       responses:
         "200":
-          description: Subscription successful. Confirmation email_service sent.
+          description: Subscription request accepted. Confirmation email sent.
           schema:
-            $ref: '#/definitions/internal_server_handlers_subscription.Subscription'
+            $ref: '#/definitions/model.Subscription'
         "400":
           description: Invalid input
           schema:
-            type: string
+            $ref: '#/definitions/response.ErrorResponse'
         "409":
           description: Email already subscribed
           schema:
-            type: string
+            $ref: '#/definitions/response.ErrorResponse'
         "500":
-          description: Internal api error
+          description: Internal error
           schema:
-            type: string
+            $ref: '#/definitions/response.ErrorResponse'
       summary: Subscribe to weather updates
       tags:
       - subscription
-  /unsubscribe/{token}:
+  /subscription/unsubscribe/{token}:
     get:
-      description: Unsubscribes an email_service from weather updates using the token sent
-        in emails.
+      description: Unsubscribes an email using the provided token.
       parameters:
       - description: Unsubscribe token
         in: path
@@ -122,7 +105,7 @@ paths:
         required: true
         type: string
       produces:
-      - text/plain
+      - application/json
       responses:
         "200":
           description: Unsubscribed successfully
@@ -131,11 +114,11 @@ paths:
         "400":
           description: Invalid token
           schema:
-            type: string
+            $ref: '#/definitions/response.ErrorResponse'
         "404":
           description: Token not found
           schema:
-            type: string
+            $ref: '#/definitions/response.ErrorResponse'
       summary: Unsubscribe from weather updates
       tags:
       - subscription
@@ -143,10 +126,9 @@ paths:
     get:
       consumes:
       - application/json
-      description: Returns the current weather forecast for the specified city using
-        WeatherAPI.com.
+      description: Returns the current weather for the specified city using WeatherAPI.com.
       parameters:
-      - description: City name for weather forecast
+      - description: City name
         in: query
         name: city
         required: true
@@ -155,17 +137,17 @@ paths:
       - application/json
       responses:
         "200":
-          description: Successful operation - current weather forecast returned
+          description: Current weather returned
           schema:
-            $ref: '#/definitions/weather.Weather'
+            $ref: '#/definitions/model.Weather'
         "400":
           description: Invalid request
           schema:
-            type: string
+            $ref: '#/definitions/response.ErrorResponse'
         "404":
           description: City not found
           schema:
-            type: string
+            $ref: '#/definitions/response.ErrorResponse'
       summary: Get current weather for a city
       tags:
       - weather

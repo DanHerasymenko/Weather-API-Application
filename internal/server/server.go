@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type Server struct {
@@ -28,6 +30,9 @@ func NewServer(cfg *config.Config) *Server {
 	// Serve static assets
 	router.Static("/static", "./static")
 	router.GET("/", func(c *gin.Context) { c.File("./static/index.html") })
+
+	// Swagger UI handler
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	return &Server{
 		cfg:    cfg,
