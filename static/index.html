@@ -93,25 +93,33 @@
         e.preventDefault();
 
         const form = e.target;
-        const formData = new URLSearchParams();
-        formData.append("email", form.email.value);
-        formData.append("city", form.city.value);
-        formData.append("frequency", form.frequency.value);
+        const payload = {
+            email: form.email.value,
+            city: form.city.value,
+            frequency: form.frequency.value,
+        };
 
-        const res = await fetch("/api/subscribe", {
+        const res = await fetch("/api/subscription/subscribe", {
             method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: formData,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
         });
 
         const responseElement = document.getElementById("response");
-        const text = await res.text();
+        let messageText = "";
+        try {
+            const data = await res.json();
+            messageText = data.message || JSON.stringify(data);
+        } catch (_) {
+            const text = await res.text();
+            messageText = text;
+        }
 
         if (res.ok) {
-            responseElement.textContent = text;
+            responseElement.textContent = messageText || "Success";
             responseElement.style.color = "green";
         } else {
-            responseElement.textContent = `Error ${res.status}: ${text}`;
+            responseElement.textContent = `Error ${res.status}: ${messageText}`;
             responseElement.style.color = "red";
         }
     });

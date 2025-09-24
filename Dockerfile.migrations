@@ -6,7 +6,8 @@ RUN go install github.com/pressly/goose/v3/cmd/goose@latest && \
     apk add --no-cache netcat-openbsd
 
 COPY scripts/migrate.sh /app/migrate.sh
-RUN chmod +x /app/migrate.sh
+# Normalize potential Windows CRLF line endings and make executable
+RUN sed -i 's/\r$//' /app/migrate.sh && chmod +x /app/migrate.sh
 
 COPY migrations /app/migrations
 

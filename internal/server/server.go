@@ -4,6 +4,7 @@ import (
 	"Weather-API-Application/internal/config"
 	"Weather-API-Application/internal/logger"
 	"Weather-API-Application/internal/middleware"
+	"Weather-API-Application/internal/utils/response"
 	"context"
 	"fmt"
 	"net/http"
@@ -33,6 +34,11 @@ func NewServer(cfg *config.Config) *Server {
 
 	// Swagger UI handler
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// 404 handler to log and return a consistent error body
+	router.NoRoute(func(c *gin.Context) {
+		response.WriteErrorJSON(c, http.StatusNotFound, fmt.Errorf("route not found: %s %s", c.Request.Method, c.Request.URL.Path), "Route not found")
+	})
 
 	return &Server{
 		cfg:    cfg,

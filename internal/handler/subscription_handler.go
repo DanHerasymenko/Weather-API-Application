@@ -106,7 +106,7 @@ func (h *SubscriptionHandler) ConfirmSubscription(ctx *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, subscription_service.ErrNotFound):
-			response.WriteErrorJSON(ctx, http.StatusNotFound, err, "Token not found")
+            response.WriteErrorJSON(ctx, http.StatusNotFound, err, "Token not found")
 			return
 		case errors.Is(err, subscription_service.ErrAlreadyConfirmed):
 			response.WriteErrorJSON(ctx, http.StatusBadRequest, err, "Already confirmed")
