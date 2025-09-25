@@ -24,13 +24,13 @@ type Scheduler interface {
 
 type SubscriptionService struct {
 	repo        repository.SubscriptionRepository
-	emailClient client.EmailClient
+	emailClient client.Client
 	cfg         *config.Config
 	scheduler   Scheduler
 	mu          sync.Mutex
 }
 
-func NewSubscriptionService(repo repository.SubscriptionRepository, emailClient client.EmailClient, cfg *config.Config) *SubscriptionService {
+func NewSubscriptionService(repo repository.SubscriptionRepository, emailClient client.Client, cfg *config.Config) *SubscriptionService {
 	return &SubscriptionService{
 		repo:        repo,
 		emailClient: emailClient,

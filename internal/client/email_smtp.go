@@ -13,18 +13,35 @@ import (
 	"Weather-API-Application/internal/model"
 )
 
+// SmtpSender abstracts smtp.SendMail for testability.
+type SmtpSender interface {
+	SendMail(addr string, a smtp.Auth, from string, to []string, msg []byte) error
+}
+
+type smtpSender struct{}
+
+func (smtpSender) SendMail(addr string, a smtp.Auth, from string, to []string, msg []byte) error {
+	return smtp.SendMail(addr, a, from, to, msg)
+}
+
 type EmailClient struct {
 	From     string
 	Password string
 	Host     string
 	Port     string
+	sender   SmtpSender
 }
 
 func NewEmailClient(cfg *config.Config) *EmailClient {
-	return &EmailClient{From: cfg.EmailClientFrom, Password: cfg.EmailClientPassword, Host: cfg.EmailClientHost, Port: cfg.EmailClientPort}
+	return &EmailClient{From: cfg.EmailClientFrom, Password: cfg.EmailClientPassword, Host: cfg.EmailClientHost, Port: cfg.EmailClientPort, sender: smtpSender{}}
 }
 
-// Client defines methods for sending emails.
+// NewEmailClientWithSender allows injecting a custom SmtpSender (useful for tests).
+func NewEmailClientWithSender(cfg *config.Config, sender SmtpSender) *EmailClient {
+	return &EmailClient{From: cfg.EmailClientFrom, Password: cfg.EmailClientPassword, Host: cfg.EmailClientHost, Port: cfg.EmailClientPort, sender: sender}
+}
+
+// Client defines methods for sending emails (used by services).
 type Client interface {
 	SendEmail(ctx context.Context, to, subject, body string) error
 }
@@ -38,7 +55,7 @@ func (c *EmailClient) SendEmail(ctx context.Context, to, subject, body string) e
 
 	auth := smtp.PlainAuth("", c.From, c.Password, c.Host)
 
-	if err := smtp.SendMail(c.Host+":"+c.Port, auth, c.From, []string{to}, msg); err != nil {
+	if err := c.sender.SendMail(c.Host+":"+c.Port, auth, c.From, []string{to}, msg); err != nil {
 		return err
 	}
 
@@ -49,7 +66,7 @@ func (c *EmailClient) SendEmail(ctx context.Context, to, subject, body string) e
 }
 
 // SendUpdate fetches current weather for the subscription city and emails the user.
-func SendUpdate(ctx context.Context, apiKey string, sub *model.Subscription, emailClient EmailClient) error {
+func SendUpdate(ctx context.Context, apiKey string, sub *model.Subscription, emailClient Client) error {
 	if apiKey == "" {
 		return fmt.Errorf("weather API key is missing in config")
 	}
